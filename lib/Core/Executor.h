@@ -157,6 +157,9 @@ private:
   /// The index into the current \ref replayOut or \ref replayPath
   /// object.
   unsigned replayPosition;
+  /// The index into the current \ref replayOut->schedSteps
+  /// object.
+  unsigned replaySched;
 
   /// When non-null a list of "seed" inputs which will be used to
   /// drive execution.
@@ -434,6 +437,7 @@ public:
     assert(!replayPath && "cannot replay both buffer and path");
     replayOut = out;
     replayPosition = 0;
+    replaySched = 0;
   }
 
   virtual void setReplayPath(const std::vector<bool> *path) {
