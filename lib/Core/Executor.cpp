@@ -291,6 +291,11 @@ namespace {
   NoMaxPreemptions("no-scheduler-bound",
             cl::desc("Do not bound the number of preemptions in the schedule (default=off)"),
             cl::init(false));
+
+  cl::opt<bool>
+  AllowPartialScheduling("allow-partial-scheduling",
+            cl::desc("Allow to continue exploring interleavings after the total number of replay scheduling steps (--replay-out) have been consumed (default=off)"),
+            cl::init(false));
 }
 
 
@@ -2745,7 +2750,7 @@ void Executor::terminateState(ExecutionState &state) {
                       "replay did not consume all objects in test input.");
   }
 
-  if (replayOut && replaySched!=replayOut->numSchedSteps) {
+  if (replayOut && replaySched < replayOut->numSchedSteps) {
     klee_warning_once(replayOut,
                       "replay did not consume all scheduling steps in test input");
   }
@@ -3646,44 +3651,56 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
   ExecutionState::threads_ty::iterator oldIt = state.crtThreadIt;
   Thread::thread_id_t oldTid = oldIt->second.tid;
 
+  bool scheduled = false;
   if (replayOut) {
-    if (replaySched >= replayOut->numSchedSteps) {
+    if (!AllowPartialScheduling && (replaySched >= replayOut->numSchedSteps)) {
       terminateStateOnError(state, "replay sched count mismatch", "user.err");
-    }
+      return false;
+    } else if (replaySched < replayOut->numSchedSteps) {
+      unsigned long nextTid = replayOut->schedSteps[replaySched];
+      klee_message("replay next tid %lu", nextTid);
+      if (oldTid == nextTid) {
+        state.schedulingHistory.push_back(oldTid); // The current thread stays as current
+      } else {
+        ExecutionState::threads_ty::iterator finalIt = state.crtThreadIt;
+        ExecutionState::threads_ty::iterator it = state.nextThread(finalIt);
+        while ((it != finalIt) && (it->second.tid != nextTid))
+          it = state.nextThread(it);
 
-    unsigned long nextTid = replayOut->schedSteps[replaySched];
-    klee_message("replay next tid %lu", nextTid);
-    if (oldTid == nextTid) {
-      state.schedulingHistory.push_back(oldTid); // The current thread stays as current
-    } else {
-      ExecutionState::threads_ty::iterator finalIt = state.crtThreadIt;
-      ExecutionState::threads_ty::iterator it = state.nextThread(finalIt);
-      while ((it != finalIt) && (it->second.tid != nextTid))
+        if (it == finalIt) {
+          terminateStateOnError(state, "replay next thread not found", "user.err");
+          return false;
+        } else if (!it->second.enabled) {
+          terminateStateOnError(state, "replay next thread is not enabled", "user.err");
+          return false;
+        }
+        state.scheduleNext(it);
+      }
+      replaySched++;
+      scheduled = true;
+    } else if (replaySched == replayOut->numSchedSteps) {
+      klee_message("replay scheduling steps exhausted, start default scheduling");
+      replaySched++;
+    }
+  }
+
+  if (!scheduled) {
+    if (!state.crtThread().enabled || yield) {
+      ExecutionState::threads_ty::iterator it = state.nextThread(state.crtThreadIt);
+
+      while (!it->second.enabled)
         it = state.nextThread(it);
 
-      if (it == finalIt) {
-        terminateStateOnError(state, "replay next thread not found", "user.err");
-      } else if (!it->second.enabled) {
-        terminateStateOnError(state, "replay next thread is not enabled", "user.err");
-      }
       state.scheduleNext(it);
-    }
-    replaySched++;
-  } else if (!state.crtThread().enabled || yield) {
-    ExecutionState::threads_ty::iterator it = state.nextThread(state.crtThreadIt);
 
-    while (!it->second.enabled)
-      it = state.nextThread(it);
-
-    state.scheduleNext(it);
-
-    if (ForkOnSchedule)
-       forkSchedule = true;
-  } else {
-    state.schedulingHistory.push_back(oldTid); // The current thread stays as current
-    if (NoMaxPreemptions || state.preemptions < MaxPreemptions) {
-      forkSchedule = true;
-      incPreemptions = true;
+      if (ForkOnSchedule)
+         forkSchedule = true;
+    } else {
+      state.schedulingHistory.push_back(oldTid); // The current thread stays as current
+      if (NoMaxPreemptions || state.preemptions < MaxPreemptions) {
+        forkSchedule = true;
+        incPreemptions = true;
+      }
     }
   }
 
