@@ -3730,22 +3730,22 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         if (incPreemptions)
           sp.first->preemptions = state.preemptions + 1;
 
-          sp.first->schedulingHistory.pop_back();
-          //The last sched step has been introduced automatically but
-          // do not refer to the original thread, at the beginning of the method
-          sp.first->scheduleNext(sp.first->threads.find(it->second.tid));
+        sp.first->schedulingHistory.pop_back();
+        //The last sched step has been introduced automatically but
+        // do not refer to the original thread, at the beginning of the method
+        sp.first->scheduleNext(sp.first->threads.find(it->second.tid));
 
-          if (DebugSchedulingHistory) {
-            unsigned int depth = sp.first->stack().size() - 1;
-            std::string Str;
-            llvm::raw_string_ostream msg(Str);
-            msg << "                " << oldTid << " -> "
-                << sp.first->crtThread().tid << " "
-                << "Call: " << std::string(depth, ' ')
-                << sp.first->stack().back().kf->function->getName().str()
-                <<" -- Fork";
-            klee_message("%s", msg.str().c_str());
-          }
+        if (DebugSchedulingHistory) {
+          unsigned int depth = sp.first->stack().size() - 1;
+          std::string Str;
+          llvm::raw_string_ostream msg(Str);
+          msg << "                " << oldTid << " -> "
+              << sp.first->crtThread().tid << " "
+              << "Call: " << std::string(depth, ' ')
+              << sp.first->stack().back().kf->function->getName().str()
+              <<" -- Fork";
+          klee_message("%s", msg.str().c_str());
+        }
 
         lastState = sp.first;
       }
