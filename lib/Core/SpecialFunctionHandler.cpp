@@ -110,6 +110,12 @@ static SpecialFunctionHandler::HandlerInfo handlerInfo[] = {
   add("klee_thread_notify", handleThreadNotify, false),
   add("klee_thread_preempt", handleThreadPreempt, false),
   add("klee_thread_sleep", handleThreadSleep, false),
+  add("klee_vclock_create", handleVectorClockCreate, true),
+  add("klee_vclock_destroy", handleVectorClockDestroy, true),
+  add("klee_vclock_get", handleVectorClockGet, true),
+  add("klee_vclock_clear", handleVectorClockClear, false),
+  add("klee_vclock_merge", handleVectorClockMerge, false),
+  add("klee_vclock_tock", handleVectorClockTock, false),
   add("klee_warning", handleWarning, false),
   add("klee_warning_once", handleWarningOnce, false),
   add("klee_alias_function", handleAliasFunction, false),
@@ -899,3 +905,54 @@ bool SpecialFunctionHandler::writeConcreteValue(ExecutionState &state,
   return true;
 }
 
+void SpecialFunctionHandler::handleVectorClockCreate(ExecutionState &state, KInstruction *target, std::vector<ref<Expr> > &arguments) {
+  assert(arguments.empty() && "invalid number of arguments to klee_vclock_create");
+
+  int64_t vcid = state.createVectorClock();
+
+  assert(vcid > 0 && "invalid vector clock id generated");
+
+  executor.bindLocal(target, state, ConstantExpr::create(vcid,
+              executor.getWidthForLLVMType(target->inst->getType())));
+}
+
+void SpecialFunctionHandler::handleVectorClockDestroy(ExecutionState &state, KInstruction *target, std::vector<ref<Expr> > &arguments) {
+  assert(arguments.size() == 1 && "invalid number of arguments to klee_vclock_destroy");
+
+  uint64_t vcid = cast<ConstantExpr>(arguments[0])->getZExtValue();
+  state.destroyVectorClock(vcid);
+}
+
+void SpecialFunctionHandler::handleVectorClockGet(ExecutionState &state, KInstruction *target, std::vector<ref<Expr> > &arguments) {
+  assert(arguments.size() == 1 && "invalid number of arguments to klee_vclock_get");
+
+  uint64_t tid = cast<ConstantExpr>(arguments[0])->getZExtValue();
+  uint64_t vcid = state.getVectorClock(tid);
+
+  assert(vcid > 0 && "invalid vector clock id recovered");
+
+  executor.bindLocal(target, state, ConstantExpr::create(vcid,
+              executor.getWidthForLLVMType(target->inst->getType())));
+}
+
+void SpecialFunctionHandler::handleVectorClockClear(ExecutionState &state, KInstruction *target, std::vector<ref<Expr> > &arguments) {
+  assert(arguments.size() == 1 && "invalid number of arguments to klee_vclock_clear");
+
+  uint64_t vcid = cast<ConstantExpr>(arguments[0])->getZExtValue();
+
+  state.vectorClockRegister[vcid].clear();
+}
+
+void SpecialFunctionHandler::handleVectorClockMerge(ExecutionState &state, KInstruction *target, std::vector<ref<Expr> > &arguments) {
+  assert(arguments.size() == 2 && "invalid number of arguments to klee_vclock_merge");
+
+  uint64_t sourceId = cast<ConstantExpr>(arguments[0])->getZExtValue();
+  uint64_t targetId = cast<ConstantExpr>(arguments[1])->getZExtValue();
+  state.vectorClockRegister[targetId].merge(state.vectorClockRegister[sourceId]);
+}
+
+void SpecialFunctionHandler::handleVectorClockTock(ExecutionState &state, KInstruction *target, std::vector<ref<Expr> > &arguments) {
+  assert(arguments.empty() && "invalid number of arguments to klee_vclock_tock");
+
+  state.vectorClockRegister[state.crtThread().getVectorClock()].tock(state.crtThread().getTid());
+}

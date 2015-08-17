@@ -142,6 +142,12 @@ namespace klee {
     HANDLER(handleThreadSleep);
     HANDLER(handleThreadTerminate);
     HANDLER(handleUnderConstrained);
+    HANDLER(handleVectorClockCreate);
+    HANDLER(handleVectorClockDestroy);
+    HANDLER(handleVectorClockGet);
+    HANDLER(handleVectorClockClear);
+    HANDLER(handleVectorClockMerge);
+    HANDLER(handleVectorClockTock);
     HANDLER(handleWarning);
     HANDLER(handleWarningOnce);
     HANDLER(handleAddOverflow);
