@@ -17,6 +17,7 @@
 // FIXME: We do not want to be exposing these? :(
 #include "../../lib/Core/AddressSpace.h"
 #include "../../lib/Core/Thread.h"
+#include "../../lib/Core/VectorClock.h"
 #include "klee/Internal/Module/KInstIterator.h"
 
 #include <map>
@@ -202,6 +203,16 @@ public:
 
   bool merge(const ExecutionState &b);
   void dumpStack(llvm::raw_ostream &out) const;
+
+public:
+  typedef uint64_t vc_id_t;
+  typedef std::map<vc_id_t, VectorClock<vc_id_t> > vector_clock_register_t;
+  vector_clock_register_t vectorClockRegister;
+  vc_id_t createVectorClock() { // FIXME
+    vectorClockRegister[vectorClockRegister.size() + 1];
+    return vectorClockRegister.size();
+  }
+
 };
 }
 

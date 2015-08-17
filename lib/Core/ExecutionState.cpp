@@ -107,7 +107,9 @@ ExecutionState::ExecutionState(const ExecutionState& state):
     waitingLists(state.waitingLists),
     wlistCounter(state.wlistCounter),
     preemptions(state.preemptions),
-    schedulingHistory(state.schedulingHistory)
+    schedulingHistory(state.schedulingHistory),
+
+    vectorClockRegister(state.vectorClockRegister)
 {
   for (unsigned int i=0; i<symbolics.size(); i++)
     symbolics[i].first->refCount++;
