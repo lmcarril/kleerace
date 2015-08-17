@@ -51,7 +51,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 
 #include <klee/klee.h>
 
@@ -91,6 +90,10 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
 
   klee_thread_create(newIdx, start_routine, arg);
   *thread = newIdx;
+
+  tdata->vc = klee_vclock_get(newIdx);
+  __vclock_push(tdata->vc);
+  __vclock_tock();
 
   __thread_preempt(0);
 
@@ -139,6 +142,9 @@ int pthread_join(pthread_t thread, void **value_ptr) {
 
   if (!tdata->terminated)
     __thread_sleep(tdata->wlist);
+
+  __vclock_pull(tdata->vc);
+  __vclock_tock();
 
   if (value_ptr) {
     *value_ptr = tdata->ret_value;
@@ -248,6 +254,8 @@ static void _mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
   }
   else
     mdata->count = -1;
+
+  mdata->vc = klee_vclock_create();
 }
 
 static mutex_data_t *_get_mutex_data(pthread_mutex_t *mutex) {
@@ -270,6 +278,7 @@ int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr) 
 
 int pthread_mutex_destroy(pthread_mutex_t *mutex) {
   mutex_data_t *mdata = _get_mutex_data(mutex);
+  klee_vclock_destroy(mdata->vc);
 
   free(mdata);
 
@@ -295,6 +304,9 @@ static int _atomic_mutex_lock(mutex_data_t *mdata, char try) {
   mdata->owner = pthread_self();
   if(mdata->count != -1)
     mdata->count = 1;
+
+  __vclock_pull(mdata->vc);
+  __vclock_tock();
 
   return 0;
 }
@@ -338,6 +350,10 @@ static int _atomic_mutex_unlock(mutex_data_t *mdata) {
 
   mdata->taken = 0;
 
+  __vclock_clear(mdata->vc);
+  __vclock_push(mdata->vc);
+  __vclock_tock();
+
   if (mdata->queued > 0)
     __thread_notify_one(mdata->wlist);
 
@@ -368,6 +384,7 @@ static void _cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr) {
   *((condvar_data_t**)cond) = cdata;
 
   cdata->wlist = klee_get_wlist();
+  cdata->vc = klee_vclock_create();
 }
 
 static condvar_data_t *_get_condvar_data(pthread_cond_t *cond) {
@@ -390,6 +407,7 @@ int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *attr) {
 
 int pthread_cond_destroy(pthread_cond_t *cond) {
   condvar_data_t *cdata = _get_condvar_data(cond);
+  klee_vclock_destroy(cdata->vc);
 
   free(cdata);
 
@@ -426,6 +444,9 @@ static int _atomic_cond_wait(condvar_data_t *cdata, mutex_data_t *mdata) {
     return -1;
   }
 
+  __vclock_pull(cdata->vc);
+  __vclock_tock();
+
   return 0;
 }
 
@@ -445,6 +466,9 @@ int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) {
 
 static int _atomic_cond_notify(condvar_data_t *cdata, char all) {
   if (cdata->queued > 0) {
+    __vclock_clear(cdata->vc);
+    __vclock_push(cdata->vc);
+    __vclock_tock();
     if (all)
       __thread_notify_all(cdata->wlist);
     else
@@ -494,6 +518,7 @@ static void _barrier_init(pthread_barrier_t *barrier, const pthread_barrierattr_
   bdata->curr_event = 0;
   bdata->init_count = count;
   bdata->left = count;
+  bdata->vc = klee_vclock_create();
 }
 
 static barrier_data_t *_get_barrier_data(pthread_barrier_t *barrier) {
@@ -516,6 +541,7 @@ int pthread_barrier_init(pthread_barrier_t *barrier, const pthread_barrierattr_t
 
 int pthread_barrier_destroy(pthread_barrier_t *barrier) {
   barrier_data_t *bdata = _get_barrier_data(barrier);
+  klee_vclock_destroy(bdata->vc);
 
   free(bdata);
 
@@ -527,11 +553,16 @@ int pthread_barrier_wait(pthread_barrier_t *barrier) {
   int result = 0;
 
   if (bdata == STATIC_BARRIER_VALUE) {
-      errno = EINVAL;
-      return -1;
+    errno = EINVAL;
+    return -1;
   }
 
+  if (bdata->left == bdata->init_count)
+    __vclock_clear(bdata->vc);
+
   --bdata->left;
+
+  __vclock_push(bdata->vc);
 
   if (bdata->left == 0) {
     ++bdata->curr_event;
@@ -546,6 +577,9 @@ int pthread_barrier_wait(pthread_barrier_t *barrier) {
   else {
     __thread_sleep(bdata->wlist);
   }
+
+  __vclock_pull(bdata->vc);
+  __vclock_tock();
 
   return result;
 }
@@ -566,6 +600,7 @@ static void _rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *a
   rwdata->nr_readers_queued = 0;
   rwdata->nr_writers_queued = 0;
   rwdata->writer_taken = 0;
+  rwdata->vc = klee_vclock_create();
 }
 
 static rwlock_data_t *_get_rwlock_data(pthread_rwlock_t *rwlock) {
@@ -588,6 +623,7 @@ int pthread_rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *at
 
 int pthread_rwlock_destroy(pthread_rwlock_t *rwlock) {
   rwlock_data_t *rwdata = _get_rwlock_data(rwlock);
+  klee_vclock_destroy(rwdata->vc);
 
   free(rwdata);
 
@@ -607,6 +643,11 @@ static int _atomic_rwlock_rdlock(rwlock_data_t *rwdata, char try) {
       return -1;
     }
 
+    if (rwdata->nr_readers == 1) {
+      __vclock_pull(rwdata->vc);
+      __vclock_tock();
+    }
+
     return 0;
   }
 
@@ -624,6 +665,9 @@ static int _atomic_rwlock_rdlock(rwlock_data_t *rwdata, char try) {
     __thread_sleep(rwdata->wlist_readers);
     ++rwdata->nr_readers;
     --rwdata->nr_readers_queued;
+
+    __vclock_pull(rwdata->vc);
+    __vclock_tock();
   }
 
   return 0;
@@ -664,6 +708,9 @@ static int _atomic_rwlock_wrlock(rwlock_data_t *rwdata, char try) {
   if (!rwdata->writer_taken && rwdata->nr_readers == 0) {
     rwdata->writer = pthread_self();
     rwdata->writer_taken = 1;
+
+    __vclock_pull(rwdata->vc);
+    __vclock_tock();
     return 0;
   }
 
@@ -682,6 +729,9 @@ static int _atomic_rwlock_wrlock(rwlock_data_t *rwdata, char try) {
     rwdata->writer = pthread_self();
     rwdata->writer_taken = 1;
     --rwdata->nr_writers_queued;
+
+    __vclock_pull(rwdata->vc);
+    __vclock_tock();
   }
 
   return 0;
@@ -719,15 +769,20 @@ static int _atomic_rwlock_unlock(rwlock_data_t *rwdata) {
     return -1;
   }
 
-  if (rwdata->writer_taken && rwdata->writer == pthread_self())
+  if (rwdata->writer_taken && rwdata->writer == pthread_self()) {
     rwdata->writer_taken = 0;
-  else if (rwdata->writer_taken && rwdata->writer != pthread_self()) {
+
+    __vclock_clear(rwdata->vc);
+    __vclock_push(rwdata->vc);
+  } else if (rwdata->writer_taken && rwdata->writer != pthread_self()) {
     errno = EPERM;
     return -1;
   } else {
     if (rwdata->nr_readers > 0)
       --rwdata->nr_readers;
   }
+
+  __vclock_tock();
 
   if (rwdata->nr_readers == 0 && rwdata->nr_writers_queued)
     __thread_notify_one(rwdata->wlist_writers);

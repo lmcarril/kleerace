@@ -50,6 +50,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <klee/klee.h>
+#include <pthread.h>
 
 #define MAX_THREADS     16
 
@@ -66,6 +67,8 @@ typedef uint64_t wlist_id_t;
 
 #define PTHREAD_BARRIER_SERIAL_THREAD    -1
 
+typedef uint64_t vc_id_t;
+
 typedef struct {
   wlist_id_t wlist;
 
@@ -74,6 +77,8 @@ typedef struct {
   char allocated;
   char terminated;
   char joinable;
+
+  vc_id_t vc;
 } thread_data_t;
 
 typedef struct {
@@ -85,6 +90,8 @@ typedef struct {
   unsigned int queued;
 
   char allocated;
+
+  vc_id_t vc;
 } mutex_data_t;
 
 typedef struct {
@@ -92,6 +99,8 @@ typedef struct {
 
   mutex_data_t *mutex;
   unsigned int queued;
+
+  vc_id_t vc;
 } condvar_data_t;
 
 typedef struct {
@@ -100,6 +109,8 @@ typedef struct {
   unsigned int curr_event;
   unsigned int left;
   unsigned int init_count;
+
+  vc_id_t vc;
 } barrier_data_t;
 
 typedef struct {
@@ -111,13 +122,17 @@ typedef struct {
   unsigned int nr_writers_queued;
   unsigned int writer;
   char writer_taken;
+
+  vc_id_t vc;
 } rwlock_data_t;
 
 typedef struct {
-    wlist_id_t wlist;
+  wlist_id_t wlist;
 
-    int count;
-    char allocated;
+  int count;
+  char allocated;
+
+  vc_id_t vc;
 } sem_data_t;
 
 typedef struct {
@@ -147,5 +162,26 @@ static inline void __thread_notify_one(uint64_t wlist) {
 static inline void __thread_notify_all(uint64_t wlist) {
   __thread_notify(wlist, 1);
 }
+
+static inline void __vclock_clear(vc_id_t vc) {
+  klee_vclock_clear(vc);
+}
+
+static inline void __vclock_tock() {
+  klee_vclock_tock();
+}
+
+static inline vc_id_t __vclock_current() {
+          return __tsync.threads[pthread_self()].vc;
+}
+
+static inline void __vclock_pull(vc_id_t vc) { // Update current thread vector clock with specified vc
+  klee_vclock_merge(vc, __vclock_current());
+}
+
+static inline void __vclock_push(vc_id_t vc) { // Update vc with current thread vector clock
+  klee_vclock_merge(__vclock_current(), vc);
+}
+
 
 #endif /* THREADS_H_ */

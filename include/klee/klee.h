@@ -176,6 +176,24 @@ extern "C" {
   /* Enable one or all threads in the specified waiting list */
   void klee_thread_notify(uint64_t wlist, int all);
 
+  /* Create a new vector clock a return the reference id */
+  uint64_t klee_vclock_create();
+
+  /* Destroy a vector clock */
+  void klee_vclock_destroy(uint64_t vc);
+
+  /* Retrieve the vector clock id of a thread */
+  uint64_t klee_vclock_get(uint64_t tid);
+
+  /* Set all indexes of the vector clock to zero */
+  void klee_vclock_clear(uint64_t vc);
+
+  /* Merges the vc_src into the vc_dst vector clock */
+  void klee_vclock_merge(uint64_t vc_src, uint64_t vc_dst);
+
+  /* Increases by one the vector clock of the current thread */
+  void klee_vclock_tock();
+
 #ifdef __cplusplus
 }
 #endif

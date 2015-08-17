@@ -52,7 +52,6 @@
 
 #include <klee/klee.h>
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // POSIX Semaphores
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,6 +87,8 @@ int sem_init(sem_posix_t *sem, int pshared, unsigned int value) {
   sdata->wlist = klee_get_wlist();
   sdata->count = value;
 
+  sdata->vc = klee_vclock_create();
+
   return 0;
 }
 
@@ -108,6 +109,8 @@ static int _atomic_sem_lock(sem_data_t *sdata, char try) {
       return -1;
     } else {
       __thread_sleep(sdata->wlist);
+      __vclock_push(sdata->vc);
+      __vclock_tock();
     }
   }
 
@@ -143,8 +146,12 @@ int sem_trywait(sem_posix_t *sem) {
 static int _atomic_sem_unlock(sem_data_t *sdata) {
   sdata->count++;
 
-  if (sdata->count <= 0)
+  if (sdata->count <= 0) {
     __thread_notify_one(sdata->wlist);
+    __vclock_clear(sdata->vc);
+    __vclock_pull(__vclock_current());
+    __vclock_tock();
+  }
 
   return 0;
 }
