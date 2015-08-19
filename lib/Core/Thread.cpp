@@ -72,10 +72,11 @@ StackFrame::~StackFrame() {
 
 /* Thread class methods */
 
-Thread::Thread(thread_id_t tid, KFunction * kf)
+Thread::Thread(thread_id_t tid, KFunction * kf, VectorClock<thread_id_t>::vc_id_t vc)
   : enabled(true), waitingList(0) {
 
   this->tid = tid;
+  this->vc = vc;
 
   if (kf) {
     stack.push_back(StackFrame(0, kf));

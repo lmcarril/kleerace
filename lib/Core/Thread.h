@@ -54,6 +54,7 @@
 
 #include "AddressSpace.h"
 #include "CallPathManager.h"
+#include "VectorClock.h"
 
 #include <map>
 
@@ -106,10 +107,13 @@ private:
   wlist_id_t waitingList;
 
   thread_id_t tid;
+
+  VectorClock<thread_id_t>::vc_id_t vc;
 public:
-  Thread(thread_id_t tid, KFunction *start_function);
+  Thread(thread_id_t tid, KFunction *start_function, VectorClock<thread_id_t>::vc_id_t vc);
 
   thread_id_t getTid() const { return tid; }
+  VectorClock<thread_id_t>::vc_id_t getVectorClock() const { return vc; }
 };
 
 }
