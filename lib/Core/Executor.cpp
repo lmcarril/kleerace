@@ -1238,7 +1238,7 @@ void Executor::executeCall(ExecutionState &state,
       Expr::Width WordSize = Context::get().getPointerWidth();
       if (WordSize == Expr::Int32) {
         executeMemoryOperation(state, true, arguments[0], 
-                               sf.varargs->getBaseExpr(), 0);
+                               sf.varargs->getBaseExpr(), ki);
       } else {
         assert(WordSize == Expr::Int64 && "Unknown word size!");
 
@@ -1246,19 +1246,19 @@ void Executor::executeCall(ExecutionState &state,
         // instead of implementing it, we can do a simple hack: just
         // make a function believe that all varargs are on stack.
         executeMemoryOperation(state, true, arguments[0],
-                               ConstantExpr::create(48, 32), 0); // gp_offset
+                               ConstantExpr::create(48, 32), ki); // gp_offset
         executeMemoryOperation(state, true,
                                AddExpr::create(arguments[0], 
                                                ConstantExpr::create(4, 64)),
-                               ConstantExpr::create(304, 32), 0); // fp_offset
+                               ConstantExpr::create(304, 32), ki); // fp_offset
         executeMemoryOperation(state, true,
                                AddExpr::create(arguments[0], 
                                                ConstantExpr::create(8, 64)),
-                               sf.varargs->getBaseExpr(), 0); // overflow_arg_area
+                               sf.varargs->getBaseExpr(), ki); // overflow_arg_area
         executeMemoryOperation(state, true,
                                AddExpr::create(arguments[0], 
                                                ConstantExpr::create(16, 64)),
-                               ConstantExpr::create(0, 64), 0); // reg_save_area
+                               ConstantExpr::create(0, 64), ki); // reg_save_area
       }
       break;
     }
@@ -2029,7 +2029,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
   case Instruction::Store: {
     ref<Expr> base = eval(ki, 1, state).value;
     ref<Expr> value = eval(ki, 0, state).value;
-    executeMemoryOperation(state, true, base, value, 0);
+    executeMemoryOperation(state, true, base, value, ki);
     break;
   }
 
@@ -3197,9 +3197,9 @@ void Executor::executeMemoryOperation(ExecutionState &state,
                                       bool isWrite,
                                       ref<Expr> address,
                                       ref<Expr> value /* undef if read */,
-                                      KInstruction *target /* undef if write */) {
+                                      KInstruction *instruction) {
   Expr::Width type = (isWrite ? value->getWidth() : 
-                     getWidthForLLVMType(target->inst->getType()));
+                     getWidthForLLVMType(instruction->inst->getType()));
   unsigned bytes = Expr::getMinBytesForWidth(type);
 
   if (SimplifySymIndices) {
@@ -3250,6 +3250,13 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         } else {
           ObjectState *wos = state.addressSpace.getWriteable(mo, os);
           wos->write(offset, value);
+
+          uint64_t addr = cast<ConstantExpr>(address)->getZExtValue();
+          std::string race = state.handleMemoryWriteAccess(addr, bytes, wos, instruction);
+          if (!race.empty()) {
+            klee_message("%s", race.c_str());
+            interpreterHandler->processTestCase(state, race.c_str(), "race");
+          }
         }          
       } else {
         ref<Expr> result = os->read(offset, type);
@@ -3257,7 +3264,14 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         if (interpreterOpts.MakeConcreteSymbolic)
           result = replaceReadWithSymbolic(state, result);
         
-        bindLocal(target, state, result);
+        bindLocal(instruction, state, result);
+
+        uint64_t addr = cast<ConstantExpr>(address)->getZExtValue();
+        std::string race = state.handleMemoryReadAccess(addr, bytes, os, instruction);
+        if (!race.empty()) {
+          klee_message("%s", race.c_str());
+          interpreterHandler->processTestCase(state, race.c_str(), "race");
+        }
       }
 
       return;
@@ -3294,10 +3308,24 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         } else {
           ObjectState *wos = bound->addressSpace.getWriteable(mo, os);
           wos->write(mo->getOffsetExpr(address), value);
+
+          uint64_t addr = cast<ConstantExpr>(address)->getZExtValue();
+          std::string race = state.handleMemoryWriteAccess(addr, bytes, wos, instruction);
+          if (!race.empty()) {
+            klee_message("%s", race.c_str());
+            interpreterHandler->processTestCase(state, race.c_str(), "race");
+          }
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
-        bindLocal(target, *bound, result);
+        bindLocal(instruction, *bound, result);
+
+        uint64_t addr = cast<ConstantExpr>(address)->getZExtValue();
+        std::string race = state.handleMemoryReadAccess(addr, bytes, os, instruction);
+        if (!race.empty()) {
+          klee_message("%s", race.c_str());
+          interpreterHandler->processTestCase(state, race.c_str(), "race");
+        }
       }
     }
 
