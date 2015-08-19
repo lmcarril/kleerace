@@ -17,6 +17,7 @@
 // FIXME: We do not want to be exposing these? :(
 #include "../../lib/Core/AddressSpace.h"
 #include "../../lib/Core/Thread.h"
+#include "../../lib/Core/MemoryAccessEntry.h"
 #include "../../lib/Core/VectorClock.h"
 #include "klee/Internal/Module/KInstIterator.h"
 
@@ -205,15 +206,43 @@ public:
   void dumpStack(llvm::raw_ostream &out) const;
 
 public:
-  typedef uint64_t vc_id_t;
-  typedef std::map<vc_id_t, VectorClock<vc_id_t> > vector_clock_register_t;
+  typedef std::map<VectorClock<Thread::thread_id_t>::vc_id_t, VectorClock<Thread::thread_id_t> > vector_clock_register_t;
   vector_clock_register_t vectorClockRegister;
-  vc_id_t createVectorClock() { // FIXME
-    vectorClockRegister[vectorClockRegister.size() + 1];
-    return vectorClockRegister.size();
+
+  VectorClock<Thread::thread_id_t>::vc_id_t createVectorClock() {
+    vectorClockRegister[vcIdCounter];
+    return vcIdCounter++;
   }
 
+  void destroyVectorClock(VectorClock<Thread::thread_id_t>::vc_id_t vc) {
+    vectorClockRegister.erase(vc);
+  }
+
+  VectorClock<Thread::thread_id_t>::vc_id_t getVectorClock(Thread::thread_id_t tid) {
+    threads_ty::const_iterator res = threads.find(tid);
+    if (res != threads.end())
+      return res->second.vc;
+    return 0;
+  }
+
+  typedef std::vector<MemoryAccessEntry> memory_access_register_t;
+  memory_access_register_t memoryAccesses;
+
+  std::string handleMemoryReadAccess(size_t address, size_t length, const ObjectState *os, const KInstruction *kInst) {
+    return handleMemoryAccess(address, length, os, kInst, false);
+  }
+
+  std::string handleMemoryWriteAccess(size_t address, size_t length, const ObjectState *os, const KInstruction *kInst) {
+    return handleMemoryAccess(address, length, os, kInst, true);
+  }
+
+  std::string handleMemoryAccess(size_t address, size_t length, const ObjectState *os, const KInstruction *kInst, bool write);
+
+  std::string printVectorClockRegister() const;
+private:
+  VectorClock<Thread::thread_id_t>::vc_id_t vcIdCounter;
+
+  std::string analyzeForRaceCondition(const MemoryAccessEntry &newEntry) const;
 };
 }
-
 #endif
