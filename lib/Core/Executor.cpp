@@ -3310,10 +3310,10 @@ void Executor::executeMemoryOperation(ExecutionState &state,
           wos->write(mo->getOffsetExpr(address), value);
 
           uint64_t addr = cast<ConstantExpr>(address)->getZExtValue();
-          std::string race = state.handleMemoryWriteAccess(addr, bytes, wos, instruction);
+          std::string race = bound->handleMemoryWriteAccess(addr, bytes, wos, instruction);
           if (!race.empty()) {
             klee_message("%s", race.c_str());
-            interpreterHandler->processTestCase(state, race.c_str(), "race");
+            interpreterHandler->processTestCase(*bound, race.c_str(), "race");
           }
         }
       } else {
@@ -3321,10 +3321,10 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         bindLocal(instruction, *bound, result);
 
         uint64_t addr = cast<ConstantExpr>(address)->getZExtValue();
-        std::string race = state.handleMemoryReadAccess(addr, bytes, os, instruction);
+        std::string race = bound->handleMemoryReadAccess(addr, bytes, os, instruction);
         if (!race.empty()) {
           klee_message("%s", race.c_str());
-          interpreterHandler->processTestCase(state, race.c_str(), "race");
+          interpreterHandler->processTestCase(*bound, race.c_str(), "race");
         }
       }
     }
