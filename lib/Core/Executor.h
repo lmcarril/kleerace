@@ -415,6 +415,10 @@ private:
 
   KFunction* resolveFunction(ref<Expr> address);
 
+  void handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
+                           bool isWrite, const ObjectState *os,
+                           KInstruction *instruction);
+
 public:
   Executor(const InterpreterOptions &opts, InterpreterHandler *ie);
   virtual ~Executor();

@@ -3250,13 +3250,6 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         } else {
           ObjectState *wos = state.addressSpace.getWriteable(mo, os);
           wos->write(offset, value);
-
-          uint64_t addr = cast<ConstantExpr>(address)->getZExtValue();
-          std::string race = state.handleMemoryWriteAccess(addr, bytes, wos, instruction);
-          if (!race.empty()) {
-            klee_message("%s", race.c_str());
-            interpreterHandler->processTestCase(state, race.c_str(), "race");
-          }
         }          
       } else {
         ref<Expr> result = os->read(offset, type);
@@ -3265,15 +3258,8 @@ void Executor::executeMemoryOperation(ExecutionState &state,
           result = replaceReadWithSymbolic(state, result);
         
         bindLocal(instruction, state, result);
-
-        uint64_t addr = cast<ConstantExpr>(address)->getZExtValue();
-        std::string race = state.handleMemoryReadAccess(addr, bytes, os, instruction);
-        if (!race.empty()) {
-          klee_message("%s", race.c_str());
-          interpreterHandler->processTestCase(state, race.c_str(), "race");
-        }
       }
-
+      handleRaceDetection(state, address, bytes, isWrite, os, instruction);
       return;
     }
   } 
@@ -3308,25 +3294,12 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         } else {
           ObjectState *wos = bound->addressSpace.getWriteable(mo, os);
           wos->write(mo->getOffsetExpr(address), value);
-
-          uint64_t addr = cast<ConstantExpr>(address)->getZExtValue();
-          std::string race = bound->handleMemoryWriteAccess(addr, bytes, wos, instruction);
-          if (!race.empty()) {
-            klee_message("%s", race.c_str());
-            interpreterHandler->processTestCase(*bound, race.c_str(), "race");
-          }
         }
       } else {
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
         bindLocal(instruction, *bound, result);
-
-        uint64_t addr = cast<ConstantExpr>(address)->getZExtValue();
-        std::string race = bound->handleMemoryReadAccess(addr, bytes, os, instruction);
-        if (!race.empty()) {
-          klee_message("%s", race.c_str());
-          interpreterHandler->processTestCase(*bound, race.c_str(), "race");
-        }
       }
+      handleRaceDetection(*bound, address, bytes, isWrite, os, instruction);
     }
 
     unbound = branches.second;
@@ -3874,6 +3847,21 @@ KFunction* Executor::resolveFunction(ref<Expr> address) {
 void Executor::bindArgumentThreadCreate(KFunction *kf, unsigned index,
                                         StackFrame &sf, ref<Expr> value) {
   getArgumentCell(sf, kf, index).value = value;
+}
+
+void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
+                                   bool isWrite, const ObjectState *os,
+                                   KInstruction *instruction ) {
+  if (ConstantExpr *addrExpr = dyn_cast<ConstantExpr>(address)) {
+    uint64_t addr = addrExpr->getZExtValue();
+    std::string race = state.handleMemoryAccess(addr, bytes, os, instruction, isWrite);
+    if (!race.empty()) {
+      klee_message("%s", race.c_str());
+      interpreterHandler->processTestCase(state, race.c_str(), "race");
+    }
+  } else { // TODO replace for proper management
+    klee_warning_once(0,"Memory acces is not a constant expression, ignoring check for races");
+  }
 }
 
 ///
