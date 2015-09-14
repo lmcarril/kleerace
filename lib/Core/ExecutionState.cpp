@@ -453,7 +453,7 @@ void ExecutionState::dumpStack(llvm::raw_ostream &out) const {
   }
 }
 
-std::string ExecutionState::handleMemoryAccess(size_t address, size_t length, const ObjectState *os, const KInstruction *kInst, bool isWrite) {
+std::string ExecutionState::handleMemoryAccess(ref<Expr> address, unsigned length, bool isWrite, const ObjectState *object, const KInstruction *kInst) {
   std::string raceInfo;
   typename vector_clock_register_t::iterator vectorClockIterator = vectorClockRegister.find(crtThread().vc);
   if (vectorClockIterator == vectorClockRegister.end()) {
@@ -467,13 +467,13 @@ std::string ExecutionState::handleMemoryAccess(size_t address, size_t length, co
     return raceInfo;
 
   std::string varName; // TODO do not rely in varName, instead in ObjectState
-  if (os && os->getObject() && os->getObject()->allocSite)
-    varName = os->getObject()->allocSite->getName().str();
+  if (object && object->getObject() && object->getObject()->allocSite)
+    varName = object->getObject()->allocSite->getName().str();
   else
     klee_message("Invalid retrieval of object name in ExecutionState::handleMemoryAccess");
 
   MemoryAccessEntry newEntry(crtThread().getTid(), vectorClockRegister[crtThread().vc],
-                             address, address + length -1, varName, loc,
+                             address, length, varName, loc,
                              isWrite, schedulingHistory.size());
   raceInfo = analyzeForRaceCondition(newEntry);
   memoryAccesses.push_back(newEntry);

@@ -6,10 +6,10 @@ namespace klee {
 
 MemoryAccessEntry::MemoryAccessEntry(Thread::thread_id_t _thread,
                                      VectorClock<Thread::thread_id_t> _vc,
-                                     uint64_t _start, uint64_t _end,
+                                     ref<Expr> _address, unsigned _length,
                                      std::string _varName, const InstructionInfo *_location,
                                      bool _isWrite, std::vector<Thread::thread_id_t>::size_type _scheduleIndex)
-  : thread(_thread), vc(_vc), start(_start), end(_end), varName(_varName), 
+  : thread(_thread), vc(_vc), address(_address), length(_length), varName(_varName),
     location(_location), isWrite(_isWrite), scheduleIndex(_scheduleIndex) {}
 
 bool MemoryAccessEntry::isRace(const MemoryAccessEntry &other) const {
@@ -19,11 +19,24 @@ bool MemoryAccessEntry::isRace(const MemoryAccessEntry &other) const {
     return false;
   if (varName != other.varName)
     return false;
-  if (!(end >= other.start && start <= other.end))
+  if (!overlaps(address, length, other.address, other.length))
     return false;
   if (vc.happensBefore(other.vc) || other.vc.happensBefore(vc))
     return false;
   return true;
+}
+
+bool MemoryAccessEntry::overlaps(ref<Expr> a, unsigned a_len, ref<Expr> b, unsigned b_len) const {
+  if (isa<ConstantExpr>(a) && isa<ConstantExpr>(b)) {
+    uint64_t a_base = cast<ConstantExpr>(a)->getZExtValue();
+    uint64_t b_base = cast<ConstantExpr>(b)->getZExtValue();
+    if (((a_base+a_len) >= b_base) && (a_base <= (b_base+b_len)))
+      return true;
+    return false;
+  } else {
+    // TODO manage case when both are not constant
+    return true;
+  }
 }
 
 bool MemoryAccessEntry::operator<(const MemoryAccessEntry &other) const {
@@ -32,14 +45,14 @@ bool MemoryAccessEntry::operator<(const MemoryAccessEntry &other) const {
   else if (thread > other.thread)
     return false;
 
-  if (start < other.start)
+  if (address < other.address)
     return true;
-  else if (start > other.start)
+  else if (other.address < address)
     return false;
 
-  if (end < other.end)
+  if (length < other.length)
     return true;
-  else if (end > other.end)
+  else if (length > other.length)
     return false;
   
   if (location && other.location) {
@@ -60,9 +73,12 @@ bool MemoryAccessEntry::operator<(const MemoryAccessEntry &other) const {
 
 std::string MemoryAccessEntry::toString() const {
   std::stringstream ss;
-  ss << (isWrite ? "store" : "load")
-     << " at adress 0x" << std::setbase(16) << start
-     << " of length " << end-start+1 << "\n"
+  ss << (isWrite ? "store" : "load");
+  if (ConstantExpr *addrExpr = dyn_cast<ConstantExpr>(address))
+     ss << " at address 0x" << std::setbase(16) << addrExpr->getZExtValue();
+  else
+     ss << " at variable " << varName;
+  ss << " of length " << length << "\n"
      << "    by thread " << thread << "\n"
      << "    from ";
   if (location)

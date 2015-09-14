@@ -228,15 +228,7 @@ public:
   typedef std::vector<MemoryAccessEntry> memory_access_register_t;
   memory_access_register_t memoryAccesses;
 
-  std::string handleMemoryReadAccess(size_t address, size_t length, const ObjectState *os, const KInstruction *kInst) {
-    return handleMemoryAccess(address, length, os, kInst, false);
-  }
-
-  std::string handleMemoryWriteAccess(size_t address, size_t length, const ObjectState *os, const KInstruction *kInst) {
-    return handleMemoryAccess(address, length, os, kInst, true);
-  }
-
-  std::string handleMemoryAccess(size_t address, size_t length, const ObjectState *os, const KInstruction *kInst, bool write);
+  std::string handleMemoryAccess(ref<Expr> address, unsigned length, bool isWrite, const ObjectState *object, const KInstruction *kInst);
 
   std::string printVectorClockRegister() const;
 private:

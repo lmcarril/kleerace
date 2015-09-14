@@ -3852,15 +3852,10 @@ void Executor::bindArgumentThreadCreate(KFunction *kf, unsigned index,
 void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
                                    bool isWrite, const ObjectState *os,
                                    KInstruction *instruction ) {
-  if (ConstantExpr *addrExpr = dyn_cast<ConstantExpr>(address)) {
-    uint64_t addr = addrExpr->getZExtValue();
-    std::string race = state.handleMemoryAccess(addr, bytes, os, instruction, isWrite);
-    if (!race.empty()) {
-      klee_message("%s", race.c_str());
-      interpreterHandler->processTestCase(state, race.c_str(), "race");
-    }
-  } else { // TODO replace for proper management
-    klee_warning_once(0,"Memory acces is not a constant expression, ignoring check for races");
+  std::string race = state.handleMemoryAccess(address, bytes, isWrite, os, instruction);
+  if (!race.empty()) {
+    klee_message("%s", race.c_str());
+    interpreterHandler->processTestCase(state, race.c_str(), "race");
   }
 }
 
