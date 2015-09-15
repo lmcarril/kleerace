@@ -62,7 +62,7 @@ void klee_init_threads(void) {
         slot->ret_value = 0;
         slot->joinable = 0;
         slot->wlist = 0;
-        slot->vc = 0;
+        __vclock_clear(slot->vc);
     }
 
     // Main thread initialization
@@ -72,5 +72,6 @@ void klee_init_threads(void) {
     def_data->ret_value = 0;
     def_data->joinable = 1; // Why not?
     def_data->wlist = klee_get_wlist();
-    def_data->vc = klee_vclock_get(DEFAULT_THREAD);
+    __vclock_tock_current();
+    __vclock_send_current();
 }

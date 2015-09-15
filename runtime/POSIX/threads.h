@@ -48,6 +48,8 @@
 #define THREADS_H_
 
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 #include <klee/klee.h>
 #include <pthread.h>
@@ -67,7 +69,7 @@ typedef uint64_t wlist_id_t;
 
 #define PTHREAD_BARRIER_SERIAL_THREAD    -1
 
-typedef uint64_t vc_id_t;
+typedef uint32_t vc_t[MAX_THREADS];
 
 typedef struct {
   wlist_id_t wlist;
@@ -78,7 +80,7 @@ typedef struct {
   char terminated;
   char joinable;
 
-  vc_id_t vc;
+  vc_t vc;
 } thread_data_t;
 
 typedef struct {
@@ -91,7 +93,7 @@ typedef struct {
 
   char allocated;
 
-  vc_id_t vc;
+  vc_t vc;
 } mutex_data_t;
 
 typedef struct {
@@ -100,7 +102,7 @@ typedef struct {
   mutex_data_t *mutex;
   unsigned int queued;
 
-  vc_id_t vc;
+  vc_t vc;
 } condvar_data_t;
 
 typedef struct {
@@ -110,7 +112,7 @@ typedef struct {
   unsigned int left;
   unsigned int init_count;
 
-  vc_id_t vc;
+  vc_t vc;
 } barrier_data_t;
 
 typedef struct {
@@ -123,7 +125,7 @@ typedef struct {
   unsigned int writer;
   char writer_taken;
 
-  vc_id_t vc;
+  vc_t vc;
 } rwlock_data_t;
 
 typedef struct {
@@ -132,7 +134,7 @@ typedef struct {
   int count;
   char allocated;
 
-  vc_id_t vc;
+  vc_t vc;
 } sem_data_t;
 
 typedef struct {
@@ -163,25 +165,48 @@ static inline void __thread_notify_all(uint64_t wlist) {
   __thread_notify(wlist, 1);
 }
 
-static inline void __vclock_clear(vc_id_t vc) {
-  klee_vclock_clear(vc);
+static inline void __vclock_print(vc_t vc) {
+  printf("(");
+  int i;
+  for (i=0; i<MAX_THREADS; i++)
+    printf("%i ", vc[i]);
+  printf(")\n");
 }
 
-static inline void __vclock_tock() {
-  klee_vclock_tock();
+static inline void __vclock_clear(vc_t vc) {
+  memset(vc, 0, sizeof(vc_t));
 }
 
-static inline vc_id_t __vclock_current() {
-          return __tsync.threads[pthread_self()].vc;
+static inline void __vclock_tock(pthread_t tid) {
+  __tsync.threads[tid].vc[tid]++;
 }
 
-static inline void __vclock_pull(vc_id_t vc) { // Update current thread vector clock with specified vc
-  klee_vclock_merge(vc, __vclock_current());
+static inline void __vclock_tock_current() {
+  __vclock_tock(pthread_self());
 }
 
-static inline void __vclock_push(vc_id_t vc) { // Update vc with current thread vector clock
-  klee_vclock_merge(__vclock_current(), vc);
+static inline void __vclock_update(vc_t target, vc_t received) { // Update target vector clock with received vc
+  int i;
+  for (i = 0; i< MAX_THREADS; ++i) {
+    if (target[i] < received[i])
+      target[i] = received[i];
+  }
 }
 
+static inline void __vclock_update_current(vc_t received) { // Update current thread vector clock with specified vc
+  __vclock_update(__tsync.threads[pthread_self()].vc, received);
+}
+
+static inline void __vclock_copy(vc_t dst, vc_t src) {
+  memcpy(dst, src, sizeof(vc_t));
+}
+
+static inline void __vclock_send(pthread_t tid) { // Send to KLEE the vector of clock of the specified thread
+  klee_vclock_send(tid, __tsync.threads[tid].vc, MAX_THREADS);
+}
+
+static inline void __vclock_send_current() { // Send to KLEE the vector of clock of the current threa
+  __vclock_send(pthread_self());
+}
 
 #endif /* THREADS_H_ */

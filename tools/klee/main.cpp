@@ -753,12 +753,7 @@ static const char *modelledExternals[] = {
   "klee_thread_preempt",
   "klee_thread_sleep",
   "klee_thread_terminate",
-  "klee_vclock_create",
-  "klee_vclock_destroy",
-  "klee_vclock_get",
-  "klee_vclock_clear",
-  "klee_vclock_merge",
-  "klee_vclock_tock",
+  "klee_vclock_send",
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 1)
   "llvm.dbg.declare",
   "llvm.dbg.value",
