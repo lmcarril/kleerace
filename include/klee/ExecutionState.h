@@ -228,13 +228,12 @@ public:
   typedef std::vector<MemoryAccessEntry> memory_access_register_t;
   memory_access_register_t memoryAccesses;
 
-  std::string handleMemoryAccess(ref<Expr> address, unsigned length, bool isWrite, const ObjectState *object, const KInstruction *kInst);
+  MemoryAccessEntry* handleMemoryAccess(ref<Expr> address, unsigned length, bool isWrite, const ObjectState *object, const KInstruction *kInst);
 
   std::string printVectorClockRegister() const;
+
 private:
   VectorClock<Thread::thread_id_t>::vc_id_t vcIdCounter;
-
-  std::string analyzeForRaceCondition(const MemoryAccessEntry &newEntry) const;
 };
 }
 #endif

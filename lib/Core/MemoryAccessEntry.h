@@ -23,8 +23,7 @@ public:
     return other < *this;
   };
   
-  bool isRace(const MemoryAccessEntry &other) const;
-  bool overlaps(const ref<Expr> a, unsigned a_len, const ref<Expr> b, unsigned b_len) const;
+  bool isRace(const ExecutionState &state, TimingSolver &solver, const MemoryAccessEntry &other) const;
   
   std::string toString() const;
   std::string toString(const std::vector<Thread::thread_id_t> schedulingHistory) const;
@@ -33,6 +32,7 @@ private:
   Thread::thread_id_t thread;
   VectorClock<Thread::thread_id_t> vc;
   ref<Expr> address;
+  ref<Expr> end;
   unsigned length;
   std::string varName;
   const InstructionInfo *location;

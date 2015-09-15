@@ -1,5 +1,7 @@
 #include "MemoryAccessEntry.h"
 
+#include "TimingSolver.h"
+
 #include <iomanip>
 
 namespace klee {
@@ -10,33 +12,31 @@ MemoryAccessEntry::MemoryAccessEntry(Thread::thread_id_t _thread,
                                      std::string _varName, const InstructionInfo *_location,
                                      bool _isWrite, std::vector<Thread::thread_id_t>::size_type _scheduleIndex)
   : thread(_thread), vc(_vc), address(_address), length(_length), varName(_varName),
-    location(_location), isWrite(_isWrite), scheduleIndex(_scheduleIndex) {}
-
-bool MemoryAccessEntry::isRace(const MemoryAccessEntry &other) const {
-  if (thread == other.thread)
-    return false;
-  if (isWrite == false && other.isWrite == false)
-    return false;
-  if (varName != other.varName)
-    return false;
-  if (!overlaps(address, length, other.address, other.length))
-    return false;
-  if (vc.happensBefore(other.vc) || other.vc.happensBefore(vc))
-    return false;
-  return true;
+    location(_location), isWrite(_isWrite), scheduleIndex(_scheduleIndex) {
+  // Build end expression: address + length
+  end = AddExpr::create(address, ConstantExpr::create(length, address->getWidth()));
 }
 
-bool MemoryAccessEntry::overlaps(ref<Expr> a, unsigned a_len, ref<Expr> b, unsigned b_len) const {
-  if (isa<ConstantExpr>(a) && isa<ConstantExpr>(b)) {
-    uint64_t a_base = cast<ConstantExpr>(a)->getZExtValue();
-    uint64_t b_base = cast<ConstantExpr>(b)->getZExtValue();
-    if (((a_base+a_len) >= b_base) && (a_base <= (b_base+b_len)))
-      return true;
+bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver, const MemoryAccessEntry &other) const {
+  if (thread == other.thread)
     return false;
-  } else {
-    // TODO manage case when both are not constant
-    return true;
-  }
+
+  if (isWrite == false && other.isWrite == false)
+    return false;
+
+  if (varName != other.varName)
+    return false;
+
+  if (vc.happensBefore(other.vc) || other.vc.happensBefore(vc))
+    return false;
+
+  // Check if true: address+length >= other.address AND address <= other.address+other.length
+  ref<Expr> overlapExpr = AndExpr::create(UgeExpr::create(end, other.address), UleExpr::create(address, other.end));
+  bool result = false;
+  if (!(solver.mustBeTrue(state, overlapExpr, result) && result))
+    return false;
+
+  return true;
 }
 
 bool MemoryAccessEntry::operator<(const MemoryAccessEntry &other) const {
@@ -75,9 +75,9 @@ std::string MemoryAccessEntry::toString() const {
   std::stringstream ss;
   ss << (isWrite ? "store" : "load");
   if (ConstantExpr *addrExpr = dyn_cast<ConstantExpr>(address))
-     ss << " at address 0x" << std::setbase(16) << addrExpr->getZExtValue();
+     ss << " at address " << addrExpr;
   else
-     ss << " at variable " << varName;
+     ss << " at address ???";
   ss << " of length " << length << "\n"
      << "    by thread " << thread << "\n"
      << "    from ";

@@ -24,6 +24,7 @@
 #include "UserSearcher.h"
 #include "ExecutorTimerInfo.h"
 #include "Thread.h"
+#include "RaceReport.h"
 
 #include "../Solver/SolverStats.h"
 
@@ -3852,7 +3853,23 @@ void Executor::bindArgumentThreadCreate(KFunction *kf, unsigned index,
 void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
                                    bool isWrite, const ObjectState *os,
                                    KInstruction *instruction ) {
-  std::string race = state.handleMemoryAccess(address, bytes, isWrite, os, instruction);
+  MemoryAccessEntry *newEntry = state.handleMemoryAccess(address, bytes, isWrite, os, instruction);
+  if (!newEntry)
+    return;
+
+  std::stringstream ss;
+  for (ExecutionState::memory_access_register_t::const_iterator it = state.memoryAccesses.begin();
+       it != state.memoryAccesses.end(); ++it) {
+    if (newEntry->isRace(state, *solver, *it)) {
+      RaceReport rr(*newEntry, *it, state.schedulingHistory);
+      if (RaceReport::emittedReports.insert(rr).second) {
+        ss << "Detected race #" << RaceReport::emittedReports.size() << ":\n"
+           << rr.toString() << "\n";
+      }
+    }
+  }
+
+  std::string race = ss.str();
   if (!race.empty()) {
     klee_message("%s", race.c_str());
     interpreterHandler->processTestCase(state, race.c_str(), "race");

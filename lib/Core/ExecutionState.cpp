@@ -18,7 +18,6 @@
 
 #include "Common.h"
 #include "Memory.h"
-#include "RaceReport.h"
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Function.h"
 #else
@@ -453,18 +452,17 @@ void ExecutionState::dumpStack(llvm::raw_ostream &out) const {
   }
 }
 
-std::string ExecutionState::handleMemoryAccess(ref<Expr> address, unsigned length, bool isWrite, const ObjectState *object, const KInstruction *kInst) {
-  std::string raceInfo;
+MemoryAccessEntry* ExecutionState::handleMemoryAccess(ref<Expr> address, unsigned length, bool isWrite, const ObjectState *object, const KInstruction *kInst) {
   typename vector_clock_register_t::iterator vectorClockIterator = vectorClockRegister.find(crtThread().vc);
   if (vectorClockIterator == vectorClockRegister.end()) {
     klee_message("Thread vector clock not found");
-    return raceInfo;
+    return NULL;
   }
 
   const InstructionInfo *loc = (kInst && kInst->info) ? kInst->info : 0;
   if (loc && (loc->file.find("POSIX") != std::string::npos ||
               loc->file.find("Intrinsic") != std::string::npos))
-    return raceInfo;
+    return NULL;
 
   std::string varName; // TODO do not rely in varName, instead in ObjectState
   if (object && object->getObject() && object->getObject()->allocSite)
@@ -475,25 +473,8 @@ std::string ExecutionState::handleMemoryAccess(ref<Expr> address, unsigned lengt
   MemoryAccessEntry newEntry(crtThread().getTid(), vectorClockRegister[crtThread().vc],
                              address, length, varName, loc,
                              isWrite, schedulingHistory.size());
-  raceInfo = analyzeForRaceCondition(newEntry);
   memoryAccesses.push_back(newEntry);
-  return raceInfo;
-}
-
-std::string ExecutionState::analyzeForRaceCondition(const MemoryAccessEntry &newEntry) const {
-  std::stringstream raceInfo;
-
-  for (memory_access_register_t::const_iterator it = memoryAccesses.begin();
-      it != memoryAccesses.end(); ++it) {
-    if (it->isRace(newEntry)) {
-      RaceReport rr(*it, newEntry, schedulingHistory);
-      if (RaceReport::emittedReports.insert(rr).second) {
-        raceInfo << "Detected race #" << RaceReport::emittedReports.size() << ":\n"
-                 << rr.toString() << "\n";
-      }
-    }
-  }
-  return raceInfo.str();
+  return &(memoryAccesses.back());
 }
 
 std::string ExecutionState::printVectorClockRegister() const {
