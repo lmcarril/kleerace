@@ -3857,19 +3857,20 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
   if (!newEntry)
     return;
 
-  std::stringstream ss;
+  std::string str;
+  llvm::raw_string_ostream sos(str);
   for (ExecutionState::memory_access_register_t::const_iterator it = state.memoryAccesses.begin();
        it != state.memoryAccesses.end(); ++it) {
     if (newEntry->isRace(state, *solver, *it)) {
       RaceReport rr(*newEntry, *it, state.schedulingHistory);
       if (RaceReport::emittedReports.insert(rr).second) {
-        ss << "Detected race #" << RaceReport::emittedReports.size() << ":\n"
-           << rr.toString() << "\n";
+        sos << "Detected race #" << RaceReport::emittedReports.size() << ":\n"
+           << rr;
       }
     }
   }
 
-  std::string race = ss.str();
+  std::string race = sos.str();
   if (!race.empty()) {
     klee_message("%s", race.c_str());
     interpreterHandler->processTestCase(state, race.c_str(), "race");

@@ -2,19 +2,16 @@
 
 #include "TimingSolver.h"
 
-#include <iomanip>
-
 namespace klee {
 
-MemoryAccessEntry::MemoryAccessEntry(Thread::thread_id_t _thread,
-                                     VectorClock<Thread::thread_id_t> _vc,
-                                     ref<Expr> _address, unsigned _length,
-                                     std::string _varName, const InstructionInfo *_location,
+MemoryAccessEntry::MemoryAccessEntry(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
+                                     const ref<Expr> _address, unsigned _length,
+                                     const std::string _varName, const InstructionInfo *_location,
                                      bool _isWrite, std::vector<Thread::thread_id_t>::size_type _scheduleIndex)
-  : thread(_thread), vc(_vc), address(_address), length(_length), varName(_varName),
-    location(_location), isWrite(_isWrite), scheduleIndex(_scheduleIndex) {
-  // Build end expression: address + length
-  end = AddExpr::create(address, ConstantExpr::create(length, address->getWidth()));
+  : thread(_thread), vc(_vc), address(_address), length(_length),
+    // Build end expression: address + length, not in body because operator= for ref is overloaded
+    end(AddExpr::create(address, ConstantExpr::create(length, address->getWidth()))),
+    varName(_varName), location(_location), isWrite(_isWrite), scheduleIndex(_scheduleIndex) {
 }
 
 bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver, const MemoryAccessEntry &other) const {
@@ -27,7 +24,7 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
   if (varName != other.varName)
     return false;
 
-  if (vc.happensBefore(other.vc) || other.vc.happensBefore(vc))
+  if (vc->happensBefore(*other.vc) || other.vc->happensBefore(*vc))
     return false;
 
   // Check if true: address+length >= other.address AND address <= other.address+other.length
@@ -71,34 +68,21 @@ bool MemoryAccessEntry::operator<(const MemoryAccessEntry &other) const {
   return false;
 }
 
-std::string MemoryAccessEntry::toString() const {
-  std::stringstream ss;
-  ss << (isWrite ? "store" : "load");
+void MemoryAccessEntry::print(llvm::raw_ostream &os) const {
+  os << (isWrite ? "store" : "load");
+  os << " at address ";
   if (ConstantExpr *addrExpr = dyn_cast<ConstantExpr>(address))
-     ss << " at address " << addrExpr;
+     os << addrExpr;
   else
-     ss << " at address ???";
-  ss << " of length " << length << "\n"
+     os << "???";
+  os << " of length " << length << "\n"
      << "    by thread " << thread << "\n"
      << "    from ";
   if (location)
-    ss << location->file << ":" << location->line;
+    os << location->file << ":" << location->line;
   else
-    ss << "???";
-  ss << "\n"
-     << "    clock " << vc.toString() << "\n";
-  return ss.str();
-}
-
-std::string MemoryAccessEntry::toString(const std::vector<Thread::thread_id_t> schedulingHistory) const {
-  std::stringstream ss;
-  ss << toString()
-     << "    schedule ";
-  for (std::vector<Thread::thread_id_t>::size_type i = 0;
-       i < scheduleIndex; i++)
-    ss << schedulingHistory.at(i) << ",";
-  ss.seekp(((long)ss.tellp())-1);
-  ss << "\n";
-  return ss.str();
+    os << "???";
+  os << "\n"
+     << "    clock " << vc;
 }
 }

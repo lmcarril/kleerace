@@ -52,21 +52,18 @@ ExecutionState::ExecutionState(KFunction *kf) :
     ptreeNode(0),
 
     wlistCounter(1),
-    preemptions(0),
-
-    vcIdCounter(1) {
+    preemptions(0) {
   setupMain(kf);
 }
 
 ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
   : constraints(assumptions), queryCost(0.), ptreeNode(0),
-    wlistCounter(1), preemptions(0), vcIdCounter(1) {
+    wlistCounter(1), preemptions(0) {
   setupMain(NULL);
 }
 
 void ExecutionState::setupMain(KFunction *kf) {
-  Thread mainThread = Thread(0, kf, createVectorClock());
-  vectorClockRegister[mainThread.vc].tock(mainThread.getTid());
+  Thread mainThread = Thread(0, kf);
   threads.insert(std::make_pair(mainThread.tid, mainThread));
   crtThreadIt = threads.begin();
 }
@@ -112,9 +109,7 @@ ExecutionState::ExecutionState(const ExecutionState& state):
     preemptions(state.preemptions),
     schedulingHistory(state.schedulingHistory),
 
-    vectorClockRegister(state.vectorClockRegister),
-    memoryAccesses(state.memoryAccesses),
-    vcIdCounter(state.vcIdCounter)
+    memoryAccesses(state.memoryAccesses)
 {
   for (unsigned int i=0; i<symbolics.size(); i++)
     symbolics[i].first->refCount++;
@@ -172,9 +167,7 @@ void ExecutionState::removeFnAlias(std::string fn) {
 }
 
 Thread& ExecutionState::createThread(Thread::thread_id_t tid, KFunction *kf) {
-  Thread newThread = Thread(tid,  kf, createVectorClock());
-  vectorClockRegister[newThread.vc].clear();
-  vectorClockRegister[newThread.vc].tock(newThread.getTid());
+  Thread newThread = Thread(tid,  kf);
   threads.insert(std::make_pair(newThread.tid, newThread));
   return threads.find(tid)->second;
 }
@@ -453,12 +446,6 @@ void ExecutionState::dumpStack(llvm::raw_ostream &out) const {
 }
 
 MemoryAccessEntry* ExecutionState::handleMemoryAccess(ref<Expr> address, unsigned length, bool isWrite, const ObjectState *object, const KInstruction *kInst) {
-  typename vector_clock_register_t::iterator vectorClockIterator = vectorClockRegister.find(crtThread().vc);
-  if (vectorClockIterator == vectorClockRegister.end()) {
-    klee_message("Thread vector clock not found");
-    return NULL;
-  }
-
   const InstructionInfo *loc = (kInst && kInst->info) ? kInst->info : 0;
   if (loc && (loc->file.find("POSIX") != std::string::npos ||
               loc->file.find("Intrinsic") != std::string::npos))
@@ -470,16 +457,9 @@ MemoryAccessEntry* ExecutionState::handleMemoryAccess(ref<Expr> address, unsigne
   else
     klee_message("Invalid retrieval of object name in ExecutionState::handleMemoryAccess");
 
-  MemoryAccessEntry newEntry(crtThread().getTid(), vectorClockRegister[crtThread().vc],
-                             address, length, varName, loc,
-                             isWrite, schedulingHistory.size());
+  MemoryAccessEntry newEntry(crtThread().getTid(), crtThread().getVectorClock(),
+                                   address, length, varName, loc,
+                                   isWrite, schedulingHistory.size());
   memoryAccesses.push_back(newEntry);
   return &(memoryAccesses.back());
-}
-
-std::string ExecutionState::printVectorClockRegister() const {
-  std::stringstream ss;
-  for (vector_clock_register_t::const_iterator it = vectorClockRegister.begin(); it!= vectorClockRegister.end();++it)
-    ss << it->first << "=>" << it->second.toString() <<"\n";
-  return ss.str();
 }

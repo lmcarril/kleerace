@@ -93,6 +93,7 @@ namespace klee {
     /* Convenience routines */
 
     std::string readStringAtAddress(ExecutionState &state, ref<Expr> address);
+    void readArrayAtAddress(ExecutionState &state, ref<Expr> addressExpr, char *buf, unsigned size);
    
     bool writeConcreteValue(ExecutionState &state, ref<Expr> address, uint64_t value, Expr::Width width);
     

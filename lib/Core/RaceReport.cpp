@@ -21,14 +21,29 @@ bool RaceReport::operator<(const RaceReport &rr) const {
   return false;
 }
 
-std::string RaceReport::toString() const {
-  std::stringstream ss;
-  ss << "========\n";
-  ss << "Race found on variable: " << current.varName << "\n";
-  ss << current.toString(schedulingHistory);
-  ss << "Conflicts with previous operation: " << "\n";
-  ss << previous.toString(schedulingHistory);
-  ss << "========\n";
-  return ss.str();
+void RaceReport::print(llvm::raw_ostream &os) const {
+  os << "========\n";
+  os << "Race found on variable: " << current.varName << "\n";
+  os << current << "\n";
+  os << "    schedule ";
+  printSchedule(os, current.scheduleIndex, schedulingHistory);
+  os << "\n";
+  os << "Conflicts with previous operation:\n";
+  os << previous << "\n";
+  os << "    schedule ";
+  printSchedule(os, previous.scheduleIndex, schedulingHistory);
+  os << "\n";
+  os << "========";
 }
+
+void RaceReport::printSchedule(llvm::raw_ostream &os,
+                               std::vector<Thread::thread_id_t>::size_type scheduleIndex,
+                               const std::vector<Thread::thread_id_t> schedulingHistory) const {
+  for (std::vector<Thread::thread_id_t>::size_type i = 0; i < scheduleIndex;) {
+    os << schedulingHistory.at(i);
+    if (++i < scheduleIndex)
+      os << ",";
+  }
+}
+
 }

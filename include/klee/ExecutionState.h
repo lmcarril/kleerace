@@ -206,34 +206,17 @@ public:
   void dumpStack(llvm::raw_ostream &out) const;
 
 public:
-  typedef std::map<VectorClock<Thread::thread_id_t>::vc_id_t, VectorClock<Thread::thread_id_t> > vector_clock_register_t;
-  vector_clock_register_t vectorClockRegister;
-
-  VectorClock<Thread::thread_id_t>::vc_id_t createVectorClock() {
-    vectorClockRegister[vcIdCounter];
-    return vcIdCounter++;
-  }
-
-  void destroyVectorClock(VectorClock<Thread::thread_id_t>::vc_id_t vc) {
-    vectorClockRegister.erase(vc);
-  }
-
-  VectorClock<Thread::thread_id_t>::vc_id_t getVectorClock(Thread::thread_id_t tid) {
-    threads_ty::const_iterator res = threads.find(tid);
+  void updateVectorClock(Thread::thread_id_t tid, ref<VectorClock> vc) {
+    threads_ty::iterator res = threads.find(tid);
     if (res != threads.end())
-      return res->second.vc;
-    return 0;
+      res->second.vc = vc;
+    return;
   }
 
   typedef std::vector<MemoryAccessEntry> memory_access_register_t;
   memory_access_register_t memoryAccesses;
 
   MemoryAccessEntry* handleMemoryAccess(ref<Expr> address, unsigned length, bool isWrite, const ObjectState *object, const KInstruction *kInst);
-
-  std::string printVectorClockRegister() const;
-
-private:
-  VectorClock<Thread::thread_id_t>::vc_id_t vcIdCounter;
 };
 }
 #endif

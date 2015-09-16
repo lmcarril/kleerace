@@ -3,26 +3,38 @@
 
 #include "MemoryAccessEntry.h"
 
+#include "llvm/Support/raw_ostream.h"
+
+#include <set>
+#include <vector>
+
 namespace klee {
 
 class RaceReport {
 public:
+  static std::set<RaceReport> emittedReports;
+
   RaceReport(const MemoryAccessEntry &_previous, const MemoryAccessEntry &_current, 
              const std::vector<Thread::thread_id_t> &_schedulingHistory);
 
-  std::string toString() const;
-
   bool operator<(const RaceReport &rr) const;
 
-  static std::set<RaceReport> emittedReports;
+  void print(llvm::raw_ostream &os) const;
 
 private:
   const MemoryAccessEntry previous;
   const MemoryAccessEntry current;
   const std::vector<Thread::thread_id_t> schedulingHistory;
-  
-  std::string printMemoryAccess(const MemoryAccessEntry &access) const;
+
+  void printSchedule(llvm::raw_ostream &os,
+                     std::vector<Thread::thread_id_t>::size_type scheduleIndex,
+                     const std::vector<Thread::thread_id_t> schedulingHistory) const;
 };
+
+inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const RaceReport &rr) {
+  rr.print(os);
+  return os;
+}
 }
 
 #endif // RACEREPORT_H

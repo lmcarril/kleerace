@@ -275,6 +275,36 @@ SpecialFunctionHandler::readStringAtAddress(ExecutionState &state,
   return result;
 }
 
+// reads an array of bytes from memory
+void SpecialFunctionHandler::readArrayAtAddress(ExecutionState &state,
+                                                ref<Expr> addressExpr,
+                                                char *buf, unsigned size) {
+  ObjectPair op;
+  addressExpr = executor.toUnique(state, addressExpr);
+  ref<ConstantExpr> address = cast<ConstantExpr>(addressExpr);
+  if (!state.addressSpace.resolveOne(address, op))
+    assert(0 && "XXX out of bounds / multiple resolution unhandled");
+  bool res;
+  assert(executor.solver->mustBeTrue(state, op.first->getBoundsCheckPointer(address,size),
+                                     res) &&
+         res &&
+         "XXX array size out of bounds");
+  const MemoryObject *mo = op.first;
+  const ObjectState *os = op.second;
+
+  unsigned offset = address->getZExtValue() - mo->address;
+  // HACK?!: mo->address can be a surrounding block of memory,
+  // so we need to adjust the reads to an offset based one the difference of addresses
+  unsigned i;
+  for (i = 0; i < size; i++) {
+    ref<Expr> cur = os->read8(offset+i);
+    cur = executor.toUnique(state, cur);
+    assert(isa<ConstantExpr>(cur) &&
+           "hit symbolic int while reading concrete array");
+    buf[i] = cast<ConstantExpr>(cur)->getZExtValue(8);
+  }
+}
+
 /****/
 
 void SpecialFunctionHandler::handleAbort(ExecutionState &state,
@@ -900,10 +930,20 @@ bool SpecialFunctionHandler::writeConcreteValue(ExecutionState &state,
   return true;
 }
 
-void SpecialFunctionHandler::handleVectorClockSend(ExecutionState &state, KInstruction *target, std::vector<ref<Expr> > &arguments) {
-  assert(arguments.size() == 2 && "invalid number of arguments to klee_vclock_send");
+void SpecialFunctionHandler::handleVectorClockSend(ExecutionState &state, KInstruction *target, 
+                                                   std::vector<ref<Expr> > &arguments) {
+  assert(arguments.size() == 3 && "invalid number of arguments to klee_vclock_send");
 
-  uint64_t threadId = cast<ConstantExpr>(arguments[0])->getZExtValue();
-  uint64_t vcPtr = cast<ConstantExpr>(arguments[1])->getZExtValue();
-  // TODO Copy VC to thread vc
+  ref<Expr> tidExpr = executor.toUnique(state, arguments[0]);
+  uint64_t threadId = cast<ConstantExpr>(tidExpr)->getZExtValue();
+
+  ref<Expr> nelementsExpr = executor.toUnique(state, arguments[2]);
+  size_t maxThreads = cast<ConstantExpr>(nelementsExpr)->getZExtValue(sizeof(size_t)*8);
+
+  uint32_t *vc = new uint32_t[maxThreads];
+  readArrayAtAddress(state, arguments[1], (char*)vc, maxThreads*sizeof(*vc));
+
+  state.updateVectorClock(threadId,VectorClock::create(vc,maxThreads));
+
+  delete[] vc;
 }

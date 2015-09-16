@@ -108,12 +108,12 @@ private:
 
   thread_id_t tid;
 
-  VectorClock<thread_id_t>::vc_id_t vc;
+  ref<VectorClock> vc;
 public:
-  Thread(thread_id_t tid, KFunction *start_function, VectorClock<thread_id_t>::vc_id_t vc);
+  Thread(thread_id_t tid, KFunction *start_function);
 
   thread_id_t getTid() const { return tid; }
-  VectorClock<thread_id_t>::vc_id_t getVectorClock() const { return vc; }
+  ref<VectorClock> getVectorClock() const { return vc; }
 };
 
 }
