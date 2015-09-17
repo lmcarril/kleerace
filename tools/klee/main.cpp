@@ -84,7 +84,11 @@ namespace {
   cl::opt<bool>
   NoOutput("no-output", 
            cl::desc("Don't generate test files"));
-    
+
+  cl::opt<std::string>
+  OnlyOutput("only-output",
+             cl::desc("Only generate test files which match the suffix"));
+
   cl::opt<bool>
   WarnAllExternals("warn-all-externals", 
                    cl::desc("Give initial warning for all externals."));
@@ -409,6 +413,10 @@ void KleeHandler::processTestCase(const ExecutionState &state,
   if (errorMessage && ExitOnError) {
     llvm::errs() << "EXITING ON ERROR:\n" << errorMessage << "\n";
     exit(1);
+  }
+
+  if ((OnlyOutput != "") && ((errorSuffix == NULL) || (OnlyOutput != errorSuffix))) {
+    return;
   }
 
   if (!NoOutput) {
