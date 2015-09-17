@@ -13,15 +13,20 @@ ref<VectorClock> VectorClock::alloc(const std::vector<clock_counter_t> clocks) {
 }
 
 int VectorClock::compare(const VectorClock &other) const {
-  if (clocks.size() != other.clocks.size())
-    return false;
-
+  bool allLess = true;
+  bool allEqual = true;
   clock_iterator_t itA = clocks.begin();
   clock_iterator_t itB = other.clocks.begin();
-  for (;itA != clocks.end() && itB != other.clocks.end(); ++itA, ++itB)
-    if (*itA != *itB)
-      return false;
-  return true;
+  for (;itA != clocks.end() && itB != other.clocks.end(); ++itA, ++itB) {
+    allLess &= (*itA < *itB);
+    allEqual &= (*itA == *itB);
+  }
+
+  if ((allLess) && (clocks.size() <= other.clocks.size()))
+    return -1;
+  if ((allEqual) && (clocks.size() == other.clocks.size()))
+    return 0;
+  return 1;
 }
 
 int VectorClock::happensBefore(const VectorClock &other) const {

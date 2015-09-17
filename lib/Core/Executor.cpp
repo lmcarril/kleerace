@@ -3853,22 +3853,36 @@ void Executor::bindArgumentThreadCreate(KFunction *kf, unsigned index,
 void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
                                    bool isWrite, const ObjectState *os,
                                    KInstruction *instruction ) {
-  MemoryAccessEntry *newEntry = state.handleMemoryAccess(address, bytes, isWrite, os, instruction);
-  if (!newEntry)
-    return;
+
+  const InstructionInfo *loc = (instruction && instruction->info) ? instruction->info : 0;
+  if (loc && (loc->file.find("POSIX") != std::string::npos ||
+      loc->file.find("Intrinsic") != std::string::npos))
+  return;
+
+  std::string varName; // TODO do not rely in varName, instead in ObjectState
+  if (os && os->getObject() && os->getObject()->allocSite)
+    varName = os->getObject()->allocSite->getName().str();
+  else
+    klee_message("Invalid retrieval of object name in race detection handling");
+
+  ref<MemoryAccessEntry> newEntry = MemoryAccessEntry::create(state.crtThread().getTid(),
+                                                              state.crtThread().getVectorClock(),
+                                                              address, bytes, varName, loc,
+                                                              isWrite, state.schedulingHistory.size());
 
   std::string str;
   llvm::raw_string_ostream sos(str);
   for (ExecutionState::memory_access_register_t::const_iterator it = state.memoryAccesses.begin();
        it != state.memoryAccesses.end(); ++it) {
-    if (newEntry->isRace(state, *solver, *it)) {
-      RaceReport rr(*newEntry, *it, state.schedulingHistory);
+    if (newEntry->isRace(state, *solver, **it)) {
+      RaceReport rr(newEntry, *it, state.schedulingHistory);
       if (RaceReport::emittedReports.insert(rr).second) {
         sos << "Detected race #" << RaceReport::emittedReports.size() << ":\n"
-           << rr;
+            << rr;
       }
     }
   }
+  state.memoryAccesses.push_back(newEntry);
 
   std::string race = sos.str();
   if (!race.empty()) {

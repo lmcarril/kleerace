@@ -444,22 +444,3 @@ void ExecutionState::dumpStack(llvm::raw_ostream &out) const {
     target = sf.caller;
   }
 }
-
-MemoryAccessEntry* ExecutionState::handleMemoryAccess(ref<Expr> address, unsigned length, bool isWrite, const ObjectState *object, const KInstruction *kInst) {
-  const InstructionInfo *loc = (kInst && kInst->info) ? kInst->info : 0;
-  if (loc && (loc->file.find("POSIX") != std::string::npos ||
-              loc->file.find("Intrinsic") != std::string::npos))
-    return NULL;
-
-  std::string varName; // TODO do not rely in varName, instead in ObjectState
-  if (object && object->getObject() && object->getObject()->allocSite)
-    varName = object->getObject()->allocSite->getName().str();
-  else
-    klee_message("Invalid retrieval of object name in ExecutionState::handleMemoryAccess");
-
-  MemoryAccessEntry newEntry(crtThread().getTid(), crtThread().getVectorClock(),
-                                   address, length, varName, loc,
-                                   isWrite, schedulingHistory.size());
-  memoryAccesses.push_back(newEntry);
-  return &(memoryAccesses.back());
-}

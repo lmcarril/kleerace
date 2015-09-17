@@ -2,16 +2,23 @@
 
 #include "TimingSolver.h"
 
-namespace klee {
+using namespace klee;
 
-MemoryAccessEntry::MemoryAccessEntry(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
-                                     const ref<Expr> _address, unsigned _length,
-                                     const std::string _varName, const InstructionInfo *_location,
-                                     bool _isWrite, std::vector<Thread::thread_id_t>::size_type _scheduleIndex)
-  : thread(_thread), vc(_vc), address(_address), length(_length),
-    // Build end expression: address + length, not in body because operator= for ref is overloaded
-    end(AddExpr::create(address, ConstantExpr::create(length, address->getWidth()))),
-    varName(_varName), location(_location), isWrite(_isWrite), scheduleIndex(_scheduleIndex) {
+ref<MemoryAccessEntry> MemoryAccessEntry::create(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
+                                                const ref<Expr> _address, unsigned _length,
+                                                const std::string _varName, const InstructionInfo *_location,
+                                                bool _isWrite, std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
+
+  ref<Expr> end(AddExpr::create(_address, ConstantExpr::create(_length, _address->getWidth())));
+  return MemoryAccessEntry::alloc(_thread, _vc, _address, _length, end, _varName, _location, _isWrite, _scheduleIndex);
+}
+
+ref<MemoryAccessEntry> MemoryAccessEntry::alloc(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
+                                                const ref<Expr> _address, unsigned _length, const ref<Expr> _end,
+                                                const std::string _varName, const InstructionInfo *_location,
+                                                bool _isWrite, std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
+  ref<MemoryAccessEntry> r(new MemoryAccessEntry(_thread, _vc, _address, _length, _end, _varName, _location, _isWrite, _scheduleIndex));
+  return r;
 }
 
 bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver, const MemoryAccessEntry &other) const {
@@ -36,36 +43,36 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
   return true;
 }
 
-bool MemoryAccessEntry::operator<(const MemoryAccessEntry &other) const {
+int MemoryAccessEntry::compare(const MemoryAccessEntry &other) const {
   if (thread < other.thread)
-    return true;
+    return -1;
   else if (thread > other.thread)
-    return false;
+    return 1;
 
   if (address < other.address)
-    return true;
+    return -1;
   else if (other.address < address)
-    return false;
+    return 1;
 
   if (length < other.length)
-    return true;
+    return -1;
   else if (length > other.length)
-    return false;
+    return 1;
   
   if (location && other.location) {
     if (location->file == other.location->file) {
       if (location->line < other.location->line)
-        return true;
+        return -1;
       else if (location->line > other.location->line)
-        return false;
+        return 1;
     } else {
       if (location < other.location)
-        return true;
+        return -1;
       else if (location > other.location)
-        return false;
+        return 1;
     }
   }
-  return false;
+  return 0;
 }
 
 void MemoryAccessEntry::print(llvm::raw_ostream &os) const {
@@ -84,5 +91,4 @@ void MemoryAccessEntry::print(llvm::raw_ostream &os) const {
     os << "???";
   os << "\n"
      << "    clock " << vc;
-}
 }

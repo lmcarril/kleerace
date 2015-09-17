@@ -213,10 +213,8 @@ public:
     return;
   }
 
-  typedef std::vector<MemoryAccessEntry> memory_access_register_t;
+  typedef std::vector<ref<MemoryAccessEntry> > memory_access_register_t;
   memory_access_register_t memoryAccesses;
-
-  MemoryAccessEntry* handleMemoryAccess(ref<Expr> address, unsigned length, bool isWrite, const ObjectState *object, const KInstruction *kInst);
 };
 }
 #endif
