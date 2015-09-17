@@ -32,6 +32,8 @@ public:
   int happensBefore(const VectorClock &other) const;
 
   void print(llvm::raw_ostream &os) const;
+
+  void print(llvm::raw_ostream &os, std::vector<clock_counter_t>::size_type index) const;
 };
 
 inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const VectorClock &vc) {

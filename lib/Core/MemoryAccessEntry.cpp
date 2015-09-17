@@ -90,5 +90,6 @@ void MemoryAccessEntry::print(llvm::raw_ostream &os) const {
   else
     os << "???";
   os << "\n"
-     << "    clock " << vc;
+     << "    clock ";
+  vc->print(os, thread);
 }

@@ -45,9 +45,26 @@ int VectorClock::happensBefore(const VectorClock &other) const {
   return (allLessOrEqual && strictSmallerExists);
 }
 
+#define ANSI_UNDERLINED_PRE  "\033[4m"
+#define ANSI_UNDERLINED_POST "\033[0m"
+void VectorClock::print(llvm::raw_ostream &os, std::vector<clock_counter_t>::size_type index) const {
+  os << "(";
+  unsigned int i = 0;
+  for (clock_iterator_t it = clocks.begin();
+       it != clocks.end(); ++i) {
+    if (i==index)
+      os << ANSI_UNDERLINED_PRE << *it << ANSI_UNDERLINED_POST;
+    else
+      os << *it;
+    if (++it!=clocks.end())
+      os << ",";
+  }
+  os << ")";
+}
+
 void VectorClock::print(llvm::raw_ostream &os) const {
   os << "(";
-  int i = 0;
+  unsigned int i = 0;
   for (clock_iterator_t it = clocks.begin();
        it != clocks.end(); ++i) {
     os << i << ":" << *it;
