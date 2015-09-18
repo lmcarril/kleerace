@@ -52,13 +52,14 @@ ExecutionState::ExecutionState(KFunction *kf) :
     ptreeNode(0),
 
     wlistCounter(1),
-    preemptions(0) {
+    preemptions(0),
+    logMemAccesses(false) {
   setupMain(kf);
 }
 
 ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
   : constraints(assumptions), queryCost(0.), ptreeNode(0),
-    wlistCounter(1), preemptions(0) {
+    wlistCounter(1), preemptions(0), logMemAccesses(false) {
   setupMain(NULL);
 }
 
@@ -109,7 +110,8 @@ ExecutionState::ExecutionState(const ExecutionState& state):
     preemptions(state.preemptions),
     schedulingHistory(state.schedulingHistory),
 
-    memoryAccesses(state.memoryAccesses)
+    memoryAccesses(state.memoryAccesses),
+    logMemAccesses(state.logMemAccesses)
 {
   for (unsigned int i=0; i<symbolics.size(); i++)
     symbolics[i].first->refCount++;
@@ -167,6 +169,7 @@ void ExecutionState::removeFnAlias(std::string fn) {
 }
 
 Thread& ExecutionState::createThread(Thread::thread_id_t tid, KFunction *kf) {
+  logMemAccesses = true;
   Thread newThread = Thread(tid,  kf);
   threads.insert(std::make_pair(newThread.tid, newThread));
   return threads.find(tid)->second;

@@ -215,6 +215,8 @@ public:
 
   typedef std::vector<ref<MemoryAccessEntry> > memory_access_register_t;
   memory_access_register_t memoryAccesses;
+
+  bool logMemAccesses;
 };
 }
 #endif
