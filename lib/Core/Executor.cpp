@@ -3876,11 +3876,13 @@ void Executor::bindArgumentThreadCreate(KFunction *kf, unsigned index,
 void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
                                    bool isWrite, bool isAtomic, const ObjectState *os,
                                    KInstruction *instruction ) {
+  if (os->getObject()->isLocal)
+    return;
 
   const InstructionInfo *loc = (instruction && instruction->info) ? instruction->info : 0;
   if (loc && (loc->file.find("POSIX") != std::string::npos ||
       loc->file.find("Intrinsic") != std::string::npos))
-  return;
+   return;
 
   std::string varName; // TODO do not rely in varName, instead in ObjectState
   if (os && os->getObject() && os->getObject()->allocSite)
