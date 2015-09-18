@@ -2,6 +2,7 @@
 
 // FIXME: This does not belong here.
 #include "../lib/Core/Common.h"
+#include "../lib/Module/Passes.h"
 
 #include "klee/ExecutionState.h"
 #include "klee/Expr.h"
@@ -50,6 +51,10 @@
 #if LLVM_VERSION_CODE < LLVM_VERSION(3, 5)
 #include "llvm/Support/system_error.h"
 #endif
+
+#include "llvm/PassManager.h"
+#include "llvm/IR/DataLayout.h"
+
 
 #include <dirent.h>
 #include <signal.h>
@@ -207,6 +212,11 @@ namespace {
   Watchdog("watchdog",
            cl::desc("Use a watchdog process to enforce --max-time."),
            cl::init(0));
+
+  cl::opt<bool>
+  EnableInstrumentAccesses("enable-instrument-accesses",
+                           cl::desc("Enable pass to instrument memory accesses."),
+                           cl::init(false));
 }
 
 extern cl::opt<double> MaxTime;
@@ -1276,6 +1286,12 @@ int main(int argc, char **argv, char **envp) {
   }
 #endif
 
+  if (EnableInstrumentAccesses) {
+    PassManager pm2;
+    const llvm::DataLayout &DL = DataLayout(mainModule);
+    pm2.add(new InstrumentAccesses(DL));
+    pm2.run(*mainModule);
+  }
 
   if (WithPOSIXRuntime) {
     int r = initEnv(mainModule);
