@@ -3888,7 +3888,7 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
       RaceReport rr(newEntry, *it, state.schedulingHistory);
       if (RaceReport::emittedReports.insert(rr).second) {
         sos << "Detected race #" << RaceReport::emittedReports.size() << ":\n"
-            << rr;
+            << rr << "\n";
       }
     }
   }
