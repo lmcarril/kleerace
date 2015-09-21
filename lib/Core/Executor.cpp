@@ -293,6 +293,11 @@ namespace {
   AllowPartialScheduling("allow-partial-scheduling",
             cl::desc("Allow to continue exploring interleavings after the total number of replay scheduling steps (--replay-out) have been consumed (default=off)"),
             cl::init(false));
+
+  cl::opt<bool>
+  CheckMemoryAccesses("check-internal-mem-accesses",
+            cl::desc("Checks for races using interpreted KLEE memory accesses."),
+            cl::init(false));
 }
 
 
@@ -3260,7 +3265,8 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         
         bindLocal(instruction, state, result);
       }
-      handleRaceDetection(state, address, bytes, isWrite, os, instruction);
+      if (CheckMemoryAccesses)
+        handleRaceDetection(state, address, bytes, isWrite, os, instruction);
       return;
     }
   } 
@@ -3300,7 +3306,8 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
         bindLocal(instruction, *bound, result);
       }
-      handleRaceDetection(*bound, address, bytes, isWrite, os, instruction);
+      if (CheckMemoryAccesses)
+        handleRaceDetection(*bound, address, bytes, isWrite, os, instruction);
     }
 
     unbound = branches.second;
