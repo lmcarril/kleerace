@@ -3199,6 +3199,20 @@ void Executor::resolveExact(ExecutionState &state,
   }
 }
 
+static bool isAtomic(Instruction *I) {
+  if (LoadInst *LI = dyn_cast<LoadInst>(I))
+    return LI->isAtomic() && LI->getSynchScope() == CrossThread;
+  if (StoreInst *SI = dyn_cast<StoreInst>(I))
+    return SI->isAtomic() && SI->getSynchScope() == CrossThread;
+  if (isa<AtomicRMWInst>(I))
+    return true;
+  if (isa<AtomicCmpXchgInst>(I))
+    return true;
+  if (isa<FenceInst>(I))
+    return true;
+  return false;
+}
+
 void Executor::executeMemoryOperation(ExecutionState &state,
                                       bool isWrite,
                                       ref<Expr> address,
@@ -3266,8 +3280,8 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         bindLocal(instruction, state, result);
       }
       if (CheckMemoryAccesses)
-        // TODO Check if atomic
-        handleRaceDetection(state, address, bytes, isWrite, false, os, instruction);
+        handleRaceDetection(state, address, bytes, isWrite,
+                            isAtomic(instruction->inst), os, instruction);
       return;
     }
   } 
@@ -3308,8 +3322,8 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         bindLocal(instruction, *bound, result);
       }
       if (CheckMemoryAccesses)
-        // TODO Check if atomic
-        handleRaceDetection(*bound, address, bytes, isWrite, false, os, instruction);
+        handleRaceDetection(*bound, address, bytes, isWrite,
+                            isAtomic(instruction->inst), os, instruction);
     }
 
     unbound = branches.second;
