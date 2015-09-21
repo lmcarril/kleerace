@@ -3877,7 +3877,8 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
   ref<MemoryAccessEntry> newEntry = MemoryAccessEntry::create(state.crtThread().getTid(),
                                                               state.crtThread().getVectorClock(),
                                                               address, bytes, varName, loc,
-                                                              isWrite, state.schedulingHistory.size());
+                                                              isWrite, isAtomic,
+                                                              state.schedulingHistory.size());
 
   std::string str;
   llvm::raw_string_ostream sos(str);

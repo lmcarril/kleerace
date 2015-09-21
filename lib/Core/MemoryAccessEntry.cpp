@@ -7,17 +7,19 @@ using namespace klee;
 ref<MemoryAccessEntry> MemoryAccessEntry::create(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
                                                 const ref<Expr> _address, unsigned _length,
                                                 const std::string _varName, const InstructionInfo *_location,
-                                                bool _isWrite, std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
+                                                bool _isWrite, bool _isAtomic,
+                                                std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
 
   ref<Expr> end(AddExpr::create(_address, ConstantExpr::create(_length, _address->getWidth())));
-  return MemoryAccessEntry::alloc(_thread, _vc, _address, _length, end, _varName, _location, _isWrite, _scheduleIndex);
+  return MemoryAccessEntry::alloc(_thread, _vc, _address, _length, end, _varName, _location, _isWrite, _isAtomic, _scheduleIndex);
 }
 
 ref<MemoryAccessEntry> MemoryAccessEntry::alloc(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
                                                 const ref<Expr> _address, unsigned _length, const ref<Expr> _end,
                                                 const std::string _varName, const InstructionInfo *_location,
-                                                bool _isWrite, std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
-  ref<MemoryAccessEntry> r(new MemoryAccessEntry(_thread, _vc, _address, _length, _end, _varName, _location, _isWrite, _scheduleIndex));
+                                                bool _isWrite, bool _isAtomic,
+                                                std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
+  ref<MemoryAccessEntry> r(new MemoryAccessEntry(_thread, _vc, _address, _length, _end, _varName, _location, _isWrite, _isAtomic, _scheduleIndex));
   return r;
 }
 
@@ -25,8 +27,12 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
   if (thread == other.thread)
     return false;
 
-  if (isWrite == false && other.isWrite == false)
+  if (!isWrite && !other.isWrite)
     return false;
+
+  if (isAtomic && other.isAtomic)
+    return false;
+  // TODO atomic read/write vs normal read/write, any case is not a race?
 
   if (varName != other.varName)
     return false;
@@ -58,7 +64,17 @@ int MemoryAccessEntry::compare(const MemoryAccessEntry &other) const {
     return -1;
   else if (length > other.length)
     return 1;
-  
+
+  if (isWrite && !other.isWrite)
+    return -1;
+  else if (!isWrite && other.isWrite)
+    return 1;
+
+  if (isAtomic && !other.isAtomic)
+    return -1;
+  else if (!isAtomic && other.isAtomic)
+    return 1;
+
   if (location && other.location) {
     if (location->file == other.location->file) {
       if (location->line < other.location->line)
@@ -76,6 +92,8 @@ int MemoryAccessEntry::compare(const MemoryAccessEntry &other) const {
 }
 
 void MemoryAccessEntry::print(llvm::raw_ostream &os) const {
+  if (isAtomic)
+    os << "atomic ";
   os << (isWrite ? "store" : "load");
   os << " at address ";
   if (ConstantExpr *addrExpr = dyn_cast<ConstantExpr>(address))
