@@ -178,6 +178,9 @@ extern "C" {
 
   /* Copies the vc into the tid thread */
   void klee_vclock_send(uint64_t tid, void *vc, size_t nelements);
+
+  /* Reports a memory operation */
+  void klee_mem_access(void *addr, size_t bytes, char isWrite, char isAtomic);
 #ifdef __cplusplus
 }
 #endif

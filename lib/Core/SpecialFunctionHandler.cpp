@@ -111,6 +111,7 @@ static SpecialFunctionHandler::HandlerInfo handlerInfo[] = {
   add("klee_thread_preempt", handleThreadPreempt, false),
   add("klee_thread_sleep", handleThreadSleep, false),
   add("klee_vclock_send", handleVectorClockSend, false),
+  add("klee_mem_access", handleMemoryAccess, false),
   add("klee_warning", handleWarning, false),
   add("klee_warning_once", handleWarningOnce, false),
   add("klee_alias_function", handleAliasFunction, false),
@@ -946,4 +947,28 @@ void SpecialFunctionHandler::handleVectorClockSend(ExecutionState &state, KInstr
   state.updateVectorClock(threadId,VectorClock::create(vc,maxThreads));
 
   delete[] vc;
+}
+
+void SpecialFunctionHandler::handleMemoryAccess(ExecutionState &state, KInstruction *target,
+                                                std::vector<ref<Expr> > &arguments) {
+  assert(arguments.size() == 4 && "invalid number of arguments to klee_mem_access");
+
+  ref<ConstantExpr> address = cast<ConstantExpr>(executor.toUnique(state, arguments[0]));
+
+  unsigned bytes = cast<ConstantExpr>(executor.toUnique(state, arguments[1]))->getZExtValue();
+
+  bool isWrite = cast<ConstantExpr>(executor.toUnique(state, arguments[2]))->getZExtValue();
+
+  bool isAtomic = cast<ConstantExpr>(executor.toUnique(state, arguments[3]))->getZExtValue();
+
+  ObjectPair op;
+  if (!state.addressSpace.resolveOne(address, op))
+    assert(0 && "XXX out of bounds / multiple resolution unhandled");
+  bool res;
+  assert(executor.solver->mustBeTrue(state, op.first->getBoundsCheckPointer(address, bytes),
+                                     res) &&
+         res &&
+         "XXX array size out of bounds");
+  const ObjectState *os = op.second;
+  executor.handleRaceDetection(state, address, bytes, isWrite, isAtomic, os, target);
 }

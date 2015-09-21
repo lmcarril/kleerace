@@ -3266,7 +3266,8 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         bindLocal(instruction, state, result);
       }
       if (CheckMemoryAccesses)
-        handleRaceDetection(state, address, bytes, isWrite, os, instruction);
+        // TODO Check if atomic
+        handleRaceDetection(state, address, bytes, isWrite, false, os, instruction);
       return;
     }
   } 
@@ -3307,7 +3308,8 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         bindLocal(instruction, *bound, result);
       }
       if (CheckMemoryAccesses)
-        handleRaceDetection(*bound, address, bytes, isWrite, os, instruction);
+        // TODO Check if atomic
+        handleRaceDetection(*bound, address, bytes, isWrite, false, os, instruction);
     }
 
     unbound = branches.second;
@@ -3858,7 +3860,7 @@ void Executor::bindArgumentThreadCreate(KFunction *kf, unsigned index,
 }
 
 void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
-                                   bool isWrite, const ObjectState *os,
+                                   bool isWrite, bool isAtomic, const ObjectState *os,
                                    KInstruction *instruction ) {
 
   const InstructionInfo *loc = (instruction && instruction->info) ? instruction->info : 0;
