@@ -55,14 +55,13 @@ void InstrumentAccesses::initializeCallbacks(Module &M) {
   // Initialize the callbacks.
   OrdTy = IRB.getInt32Ty();
 
-  // void __klee_mem_access(void * address, size_t size, bool isWrite, bool isAtomic)
+  // void klee_mem_access(void * address, size_t size, bool isWrite, bool isAtomic)
   Access = checkInterfaceFunction(
-      M.getOrInsertFunction("__klee_mem_access",
+      M.getOrInsertFunction("klee_mem_access",
                             IRB.getVoidTy(), IRB.getInt8PtrTy(), IntptrTy, IRB.getInt8Ty(), IRB.getInt8Ty(), NULL));
 }
 
 bool InstrumentAccesses::doInitialization(Module &M) {
-  // Always insert a call to __klee_mem_init into the module's CTORs.
   IRBuilder<> IRB(M.getContext());
   IntptrTy = IRB.getIntPtrTy(&DL);
   return true;
