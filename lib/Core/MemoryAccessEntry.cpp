@@ -10,6 +10,20 @@ namespace {
   PrintLocksets("print-locksets",
                cl::desc("Print the locksets in memory accesses (default=off)"),
                cl::init(false));
+
+  enum RaceAlg {
+    HappensBeforeAlg,
+    LocksetAlg
+  };
+
+  cl::opt<RaceAlg>
+  RaceDetectionAlgorithm("race-detection",
+                         cl::desc("Race detection algorithm (default=hb)"),
+                         cl::values(
+                           clEnumValN(HappensBeforeAlg, "hb", "Happens before"),
+                           clEnumValN(LocksetAlg, "ls", "Lockset"),
+                           clEnumValEnd),
+                         cl::init(HappensBeforeAlg));
 }
 
 using namespace klee;
@@ -47,8 +61,17 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
   if (varName != other.varName)
     return false;
 
-  if (vc->happensBefore(*other.vc) || other.vc->happensBefore(*vc))
-    return false;
+  switch(RaceDetectionAlgorithm) {
+    case HappensBeforeAlg:
+      if (vc->happensBefore(*other.vc) || other.vc->happensBefore(*vc))
+        return false;
+      break;
+    case LocksetAlg:
+      if (!lockset->intersect(*other.lockset)->empty())
+        return false;
+      break;
+    default: klee_error("invalid --race-detection");
+  }
 
   // Check if true: address+length >= other.address AND address <= other.address+other.length
   ref<Expr> overlapExpr = AndExpr::create(UgeExpr::create(end, other.address), UleExpr::create(address, other.end));

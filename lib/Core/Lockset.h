@@ -39,6 +39,8 @@ public:
 
   ref<Lockset> intersect(const Lockset &other) const;
 
+  bool empty() const { return locks.empty(); };
+
   void print(llvm::raw_ostream &os) const;
 };
 
