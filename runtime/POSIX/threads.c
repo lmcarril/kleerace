@@ -527,8 +527,8 @@ int pthread_barrier_wait(pthread_barrier_t *barrier) {
   int result = 0;
 
   if (bdata == STATIC_BARRIER_VALUE) {
-      errno = EINVAL;
-      return -1;
+    errno = EINVAL;
+    return -1;
   }
 
   --bdata->left;
