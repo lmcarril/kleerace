@@ -209,4 +209,20 @@ static inline void __vclock_send_current() { // Send to KLEE the vector of clock
   __vclock_send(pthread_self());
 }
 
+static inline void __lockset_update(pthread_t thread, void *mutex, char isAcquire, char isWriteMode) {
+  klee_lockset_update(thread, mutex, isAcquire, isWriteMode);
+}
+
+static inline void __lockset_acquire(void *mutex, pthread_t thread) {
+  __lockset_update(thread, mutex, 1, 1);
+}
+
+static inline void __lockset_release(void *mutex, pthread_t thread) {
+  __lockset_update(thread, mutex, 0, 0);
+}
+
+static inline void __lockset_acquire_read(void *mutex, pthread_t thread) {
+  __lockset_update(thread, mutex, 1, 0);
+}
+
 #endif /* THREADS_H_ */

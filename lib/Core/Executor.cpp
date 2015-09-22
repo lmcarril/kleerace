@@ -3893,8 +3893,11 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
   else
     klee_message("Invalid retrieval of object name in race detection handling");
 
+  ref<Lockset> lockset = isWrite? state.crtThread().getWriteLockset() : state.crtThread().getLockset();
+
   ref<MemoryAccessEntry> newEntry = MemoryAccessEntry::create(state.crtThread().getTid(),
                                                               state.crtThread().getVectorClock(),
+                                                              lockset,
                                                               address, bytes, varName, loc,
                                                               isWrite, isAtomic,
                                                               state.schedulingHistory.size());

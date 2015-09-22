@@ -25,6 +25,10 @@ public:
   unsigned refCount;
 
   static ref<VectorClock> create(const uint32_t *buf, const uint32_t nelements);
+  static ref<VectorClock> create() {
+    std::vector<clock_counter_t> empty;
+    return VectorClock::alloc(empty);
+  };
   static ref<VectorClock> alloc(const std::vector<clock_counter_t> clocks);
 
   int compare(const VectorClock &other) const;

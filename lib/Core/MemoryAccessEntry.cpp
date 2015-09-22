@@ -2,24 +2,34 @@
 
 #include "TimingSolver.h"
 
+#include "llvm/Support/CommandLine.h"
+
+using namespace llvm;
+namespace {
+  cl::opt<bool>
+  PrintLocksets("print-locksets",
+               cl::desc("Print the locksets in memory accesses (default=off)"),
+               cl::init(false));
+}
+
 using namespace klee;
 
 ref<MemoryAccessEntry> MemoryAccessEntry::create(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
-                                                const ref<Expr> _address, unsigned _length,
-                                                const std::string _varName, const InstructionInfo *_location,
-                                                bool _isWrite, bool _isAtomic,
-                                                std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
+                                                 const ref<Lockset> _lockset, const ref<Expr> _address, unsigned _length,
+                                                 const std::string _varName, const InstructionInfo *_location,
+                                                 bool _isWrite, bool _isAtomic,
+                                                 std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
 
   ref<Expr> end(AddExpr::create(_address, ConstantExpr::create(_length, _address->getWidth())));
-  return MemoryAccessEntry::alloc(_thread, _vc, _address, _length, end, _varName, _location, _isWrite, _isAtomic, _scheduleIndex);
+  return MemoryAccessEntry::alloc(_thread, _vc, _lockset, _address, _length, end, _varName, _location, _isWrite, _isAtomic, _scheduleIndex);
 }
 
 ref<MemoryAccessEntry> MemoryAccessEntry::alloc(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
-                                                const ref<Expr> _address, unsigned _length, const ref<Expr> _end,
+                                                const ref<Lockset> _lockset, const ref<Expr> _address, unsigned _length, const ref<Expr> _end,
                                                 const std::string _varName, const InstructionInfo *_location,
                                                 bool _isWrite, bool _isAtomic,
                                                 std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
-  ref<MemoryAccessEntry> r(new MemoryAccessEntry(_thread, _vc, _address, _length, _end, _varName, _location, _isWrite, _isAtomic, _scheduleIndex));
+  ref<MemoryAccessEntry> r(new MemoryAccessEntry(_thread, _vc, _lockset, _address, _length, _end, _varName, _location, _isWrite, _isAtomic, _scheduleIndex));
   return r;
 }
 
@@ -110,4 +120,9 @@ void MemoryAccessEntry::print(llvm::raw_ostream &os) const {
   os << "\n"
      << "    clock ";
   vc->print(os, thread);
+  if (PrintLocksets) {
+    os << "\n"
+       << "    lockset "
+       << lockset;
+  }
 }

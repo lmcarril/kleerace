@@ -145,6 +145,7 @@ namespace klee {
     HANDLER(handleUnderConstrained);
     HANDLER(handleVectorClockSend);
     HANDLER(handleMemoryAccess);
+    HANDLER(handleLocksetUpdate);
     HANDLER(handleWarning);
     HANDLER(handleWarningOnce);
     HANDLER(handleAddOverflow);

@@ -311,6 +311,7 @@ static int _atomic_mutex_lock(mutex_data_t *mdata, char try) {
   __vclock_update_current(mdata->vc);
   __vclock_tock_current();
   __vclock_send_current();
+  __lockset_acquire(mdata, mdata->owner);
 
   return 0;
 }
@@ -357,6 +358,7 @@ static int _atomic_mutex_unlock(mutex_data_t *mdata) {
   __vclock_copy(mdata->vc,__tsync.threads[pthread_self()].vc);
   __vclock_tock_current();
   __vclock_send_current();
+  __lockset_release(mdata, mdata->owner);
 
   if (mdata->queued > 0)
     __thread_notify_one(mdata->wlist);
@@ -650,6 +652,7 @@ static int _atomic_rwlock_rdlock(rwlock_data_t *rwdata, char try) {
       __vclock_update_current(rwdata->vc);
       __vclock_tock_current();
       __vclock_send_current();
+      __lockset_acquire_read(rwdata, pthread_self());
     }
 
     return 0;
@@ -673,6 +676,7 @@ static int _atomic_rwlock_rdlock(rwlock_data_t *rwdata, char try) {
     __vclock_update_current(rwdata->vc);
     __vclock_tock_current();
     __vclock_send_current();
+    __lockset_acquire_read(rwdata, pthread_self());
   }
 
   return 0;
@@ -717,6 +721,7 @@ static int _atomic_rwlock_wrlock(rwlock_data_t *rwdata, char try) {
     __vclock_update_current(rwdata->vc);
     __vclock_tock_current();
     __vclock_send_current();
+    __lockset_acquire(rwdata, rwdata->writer);
     return 0;
   }
 
@@ -739,6 +744,7 @@ static int _atomic_rwlock_wrlock(rwlock_data_t *rwdata, char try) {
     __vclock_update_current(rwdata->vc);
     __vclock_tock_current();
     __vclock_send_current();
+    __lockset_acquire(rwdata, rwdata->writer);
   }
 
   return 0;
@@ -790,6 +796,7 @@ static int _atomic_rwlock_unlock(rwlock_data_t *rwdata) {
 
   __vclock_tock_current();
   __vclock_send_current();
+  __lockset_release(rwdata, pthread_self());
 
   if (rwdata->nr_readers == 0 && rwdata->nr_writers_queued)
     __thread_notify_one(rwdata->wlist_writers);

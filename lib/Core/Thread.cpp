@@ -76,7 +76,9 @@ Thread::Thread(thread_id_t tid, KFunction * kf)
   : enabled(true), waitingList(0) {
 
   this->tid = tid;
-  this->vc = VectorClock::create(NULL,0); // TODO send vector to initiliaze
+  this->vc = VectorClock::create(); // TODO send vector to initiliaze
+  this->lockset = Lockset::create();
+  this->writeLockset = Lockset::create();
 
   if (kf) {
     stack.push_back(StackFrame(0, kf));

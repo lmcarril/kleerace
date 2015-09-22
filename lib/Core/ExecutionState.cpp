@@ -83,6 +83,7 @@ ExecutionState::~ExecutionState() {
     while (!t.stack.empty()) popFrame(t);
   }
 }
+
 ExecutionState::ExecutionState(const ExecutionState& state):
     fnAliases(state.fnAliases),
 
@@ -445,5 +446,20 @@ void ExecutionState::dumpStack(llvm::raw_ostream &out) const {
       out << " at " << ii.file << ":" << ii.line;
     out << "\n";
     target = sf.caller;
+  }
+}
+
+void ExecutionState::updateLockset(Thread::thread_id_t tid, uint64_t lock_id,
+                                   bool isAcquire, bool isWriteMode) {
+  threads_ty::iterator res = threads.find(tid);
+  if (res != threads.end()) {
+    if (isAcquire) {
+      res->second.lockset = res->second.lockset->insert(lock_id);
+      if (isWriteMode)
+        res->second.writeLockset = res->second.writeLockset->insert(lock_id);
+    } else {
+      res->second.lockset = res->second.lockset->erase(lock_id);
+      res->second.writeLockset = res->second.writeLockset->erase(lock_id);
+    }
   }
 }

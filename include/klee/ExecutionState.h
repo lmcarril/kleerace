@@ -217,6 +217,8 @@ public:
   memory_access_register_t memoryAccesses;
 
   bool logMemAccesses;
+
+  void updateLockset(Thread::thread_id_t tid, uint64_t lock_id, bool isAcquire, bool isWriteMode);
 };
 }
 #endif

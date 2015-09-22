@@ -54,6 +54,7 @@
 
 #include "AddressSpace.h"
 #include "CallPathManager.h"
+#include "Lockset.h"
 #include "VectorClock.h"
 
 #include <map>
@@ -109,11 +110,16 @@ private:
   thread_id_t tid;
 
   ref<VectorClock> vc;
+
+  ref<Lockset> lockset;
+  ref<Lockset> writeLockset;
 public:
   Thread(thread_id_t tid, KFunction *start_function);
 
   thread_id_t getTid() const { return tid; }
   ref<VectorClock> getVectorClock() const { return vc; }
+  ref<Lockset> getLockset() const { return lockset; }
+  ref<Lockset> getWriteLockset() const { return writeLockset; }
 };
 
 }

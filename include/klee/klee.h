@@ -181,6 +181,9 @@ extern "C" {
 
   /* Reports a memory operation */
   void klee_mem_access(void *addr, size_t bytes, char isWrite, char isAtomic);
+
+  /* Adds the mutex to the specified thread lockset */
+  void klee_lockset_update(uint64_t tid, void *mutex, char isAcquire, char isWriteMode);
 #ifdef __cplusplus
 }
 #endif

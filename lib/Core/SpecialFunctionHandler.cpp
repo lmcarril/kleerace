@@ -112,6 +112,7 @@ static SpecialFunctionHandler::HandlerInfo handlerInfo[] = {
   add("klee_thread_sleep", handleThreadSleep, false),
   add("klee_vclock_send", handleVectorClockSend, false),
   add("klee_mem_access", handleMemoryAccess, false),
+  add("klee_lockset_update", handleLocksetUpdate, false),
   add("klee_warning", handleWarning, false),
   add("klee_warning_once", handleWarningOnce, false),
   add("klee_alias_function", handleAliasFunction, false),
@@ -971,4 +972,19 @@ void SpecialFunctionHandler::handleMemoryAccess(ExecutionState &state, KInstruct
          "XXX array size out of bounds");
   const ObjectState *os = op.second;
   executor.handleRaceDetection(state, address, bytes, isWrite, isAtomic, os, target);
+}
+
+void SpecialFunctionHandler::handleLocksetUpdate(ExecutionState &state, KInstruction *target,
+                                                 std::vector<ref<Expr> > &arguments) {
+  assert(arguments.size() == 4 && "invalid number of arguments to klee_lockset_update");
+
+  uint64_t threadId = cast<ConstantExpr>(executor.toUnique(state, arguments[0]))->getZExtValue();
+
+  uint64_t address = cast<ConstantExpr>(executor.toUnique(state, arguments[1]))->getZExtValue();
+
+  bool isAcquire = cast<ConstantExpr>(executor.toUnique(state, arguments[2]))->getZExtValue();
+
+  bool isWriteMode = cast<ConstantExpr>(executor.toUnique(state, arguments[3]))->getZExtValue();
+
+  state.updateLockset(threadId, address, isAcquire, isWriteMode);
 }
