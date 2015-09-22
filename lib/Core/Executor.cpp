@@ -3281,7 +3281,7 @@ void Executor::executeMemoryOperation(ExecutionState &state,
       }
       if (CheckMemoryAccesses)
         handleRaceDetection(state, address, bytes, isWrite,
-                            isAtomic(instruction->inst), os, instruction);
+                            isAtomic(instruction->inst), mo, instruction);
       return;
     }
   } 
@@ -3323,7 +3323,7 @@ void Executor::executeMemoryOperation(ExecutionState &state,
       }
       if (CheckMemoryAccesses)
         handleRaceDetection(*bound, address, bytes, isWrite,
-                            isAtomic(instruction->inst), os, instruction);
+                            isAtomic(instruction->inst), mo, instruction);
     }
 
     unbound = branches.second;
@@ -3874,9 +3874,9 @@ void Executor::bindArgumentThreadCreate(KFunction *kf, unsigned index,
 }
 
 void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
-                                   bool isWrite, bool isAtomic, const ObjectState *os,
+                                   bool isWrite, bool isAtomic, const MemoryObject *mo,
                                    KInstruction *instruction ) {
-  if (os->getObject()->isLocal)
+  if (mo->isLocal)
     return;
 
   if (!state.logMemAccesses)
@@ -3888,8 +3888,8 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
    return;
 
   std::string varName; // TODO do not rely in varName, instead in ObjectState
-  if (os && os->getObject() && os->getObject()->allocSite)
-    varName = os->getObject()->allocSite->getName().str();
+  if (mo && mo->allocSite)
+    varName = mo->allocSite->getName().str();
   else
     klee_message("Invalid retrieval of object name in race detection handling");
 

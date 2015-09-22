@@ -954,24 +954,24 @@ void SpecialFunctionHandler::handleMemoryAccess(ExecutionState &state, KInstruct
                                                 std::vector<ref<Expr> > &arguments) {
   assert(arguments.size() == 4 && "invalid number of arguments to klee_mem_access");
 
-  ref<ConstantExpr> address = cast<ConstantExpr>(executor.toUnique(state, arguments[0]));
-
   unsigned bytes = cast<ConstantExpr>(executor.toUnique(state, arguments[1]))->getZExtValue();
 
   bool isWrite = cast<ConstantExpr>(executor.toUnique(state, arguments[2]))->getZExtValue();
 
   bool isAtomic = cast<ConstantExpr>(executor.toUnique(state, arguments[3]))->getZExtValue();
 
-  ObjectPair op;
-  if (!state.addressSpace.resolveOne(address, op))
-    assert(0 && "XXX out of bounds / multiple resolution unhandled");
-  bool res;
-  assert(executor.solver->mustBeTrue(state, op.first->getBoundsCheckPointer(address, bytes),
-                                     res) &&
-         res &&
-         "XXX array size out of bounds");
-  const ObjectState *os = op.second;
-  executor.handleRaceDetection(state, address, bytes, isWrite, isAtomic, os, target);
+  ref<Expr> address = executor.toUnique(state, arguments[0]);
+
+  ResolutionList rl;
+  state.addressSpace.resolve(state, executor.solver, address, rl, 0, executor.coreSolverTimeout);
+  for (ResolutionList::iterator it = rl.begin(), ie = rl.end(); it != ie; ++it) {
+    bool res;
+    assert(executor.solver->mustBeTrue(state, it->first->getBoundsCheckPointer(address, bytes),
+                                       res) &&
+           res &&
+           "XXX array size out of bounds");
+    executor.handleRaceDetection(state, address, bytes, isWrite, isAtomic, it->first, target);
+  }
 }
 
 void SpecialFunctionHandler::handleLocksetUpdate(ExecutionState &state, KInstruction *target,

@@ -416,7 +416,7 @@ private:
   KFunction* resolveFunction(ref<Expr> address);
 
   void handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
-                           bool isWrite, bool isAtomic, const ObjectState *os,
+                           bool isWrite, bool isAtomic, const MemoryObject *mo,
                            KInstruction *instruction);
 
 public:
