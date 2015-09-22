@@ -607,6 +607,7 @@ static void _rwlock_init(pthread_rwlock_t *rwlock, const pthread_rwlockattr_t *a
   rwdata->nr_writers_queued = 0;
   rwdata->writer_taken = 0;
   __vclock_clear(rwdata->vc);
+  __vclock_clear(rwdata->write_vc);
 }
 
 static rwlock_data_t *_get_rwlock_data(pthread_rwlock_t *rwlock) {
@@ -648,12 +649,10 @@ static int _atomic_rwlock_rdlock(rwlock_data_t *rwdata, char try) {
       return -1;
     }
 
-    if (rwdata->nr_readers == 1) {
-      __vclock_update_current(rwdata->vc);
-      __vclock_tock_current();
-      __vclock_send_current();
-      __lockset_acquire_read(rwdata, pthread_self());
-    }
+    __vclock_update_current(rwdata->write_vc);
+    __vclock_tock_current();
+    __vclock_send_current();
+    __lockset_acquire_read(rwdata, pthread_self());
 
     return 0;
   }
@@ -673,7 +672,7 @@ static int _atomic_rwlock_rdlock(rwlock_data_t *rwdata, char try) {
     ++rwdata->nr_readers;
     --rwdata->nr_readers_queued;
 
-    __vclock_update_current(rwdata->vc);
+    __vclock_update_current(rwdata->write_vc);
     __vclock_tock_current();
     __vclock_send_current();
     __lockset_acquire_read(rwdata, pthread_self());
@@ -785,6 +784,7 @@ static int _atomic_rwlock_unlock(rwlock_data_t *rwdata) {
   if (rwdata->writer_taken && rwdata->writer == pthread_self()) {
     rwdata->writer_taken = 0;
 
+    __vclock_copy(rwdata->write_vc, __tsync.threads[pthread_self()].vc);
     __vclock_copy(rwdata->vc, __tsync.threads[pthread_self()].vc);
   } else if (rwdata->writer_taken && rwdata->writer != pthread_self()) {
     errno = EPERM;
@@ -792,6 +792,7 @@ static int _atomic_rwlock_unlock(rwlock_data_t *rwdata) {
   } else {
     if (rwdata->nr_readers > 0)
       --rwdata->nr_readers;
+    __vclock_update(rwdata->vc, __tsync.threads[pthread_self()].vc);
   }
 
   __vclock_tock_current();

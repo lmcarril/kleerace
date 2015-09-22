@@ -126,6 +126,7 @@ typedef struct {
   char writer_taken;
 
   vc_t vc;
+  vc_t write_vc;
 } rwlock_data_t;
 
 typedef struct {
