@@ -2,6 +2,7 @@
 
 // FIXME: This does not belong here.
 #include "../lib/Core/Common.h"
+#include "../lib/Module/Passes.h"
 
 #include "klee/ExecutionState.h"
 #include "klee/Expr.h"
@@ -50,6 +51,8 @@
 #if LLVM_VERSION_CODE < LLVM_VERSION(3, 5)
 #include "llvm/Support/system_error.h"
 #endif
+
+#include "llvm/PassManager.h"
 
 #include <dirent.h>
 #include <signal.h>
@@ -1267,7 +1270,6 @@ int main(int argc, char **argv, char **envp) {
   }
 #endif
 
-
   if (WithPOSIXRuntime) {
     int r = initEnv(mainModule);
     if (r != 0)
@@ -1308,6 +1310,10 @@ int main(int argc, char **argv, char **envp) {
     klee_message("NOTE: Using model: %s", Path.c_str());
     mainModule = klee::linkWithLibrary(mainModule, Path.c_str());
     assert(mainModule && "unable to link with simple model");
+
+    PassManager pm;
+    pm.add(new ThreadPreemptionPass());
+    pm.run(*mainModule);
   }  
 
   // Get the desired main function.  klee_main initializes uClibc
