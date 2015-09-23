@@ -119,29 +119,15 @@ static int _atomic_sem_lock(sem_data_t *sdata, char try) {
 }
 
 int sem_wait(sem_posix_t *sem) {
-  //__thread_preempt(0);
-
   sem_data_t *sdata = _get_sem_data(sem);
 
-  int res = _atomic_sem_lock(sdata, 0);
-
-  if (res == 0)
-    __thread_preempt(0);
-
-  return res;
+  return _atomic_sem_lock(sdata, 0);
 }
 
 int sem_trywait(sem_posix_t *sem) {
-  //__thread_preempt(0);
-
   sem_data_t *sdata = _get_sem_data(sem);
 
-  int res = _atomic_sem_lock(sdata, 1);
-
-  if (res == 0)
-    __thread_preempt(0);
-
-  return res;
+  return _atomic_sem_lock(sdata, 1);
 }
 
 static int _atomic_sem_unlock(sem_data_t *sdata) {
@@ -158,14 +144,7 @@ static int _atomic_sem_unlock(sem_data_t *sdata) {
 }
 
 int sem_post(sem_posix_t *sem) {
-  //__thread_preempt(0);
-
   sem_data_t *sdata = _get_sem_data(sem);
 
-  int res = _atomic_sem_unlock(sdata);
-
-  if (res == 0)
-    __thread_preempt(0);
-
-  return res;
+  return _atomic_sem_unlock(sdata);
 }

@@ -55,7 +55,6 @@
 #include "llvm/PassManager.h"
 #include "llvm/IR/DataLayout.h"
 
-
 #include <dirent.h>
 #include <signal.h>
 #include <unistd.h>
@@ -1335,6 +1334,10 @@ int main(int argc, char **argv, char **envp) {
     klee_message("NOTE: Using model: %s", Path.c_str());
     mainModule = klee::linkWithLibrary(mainModule, Path.c_str());
     assert(mainModule && "unable to link with simple model");
+
+    PassManager pm;
+    pm.add(new ThreadPreemptionPass());
+    pm.run(*mainModule);
   }  
 
   // Get the desired main function.  klee_main initializes uClibc

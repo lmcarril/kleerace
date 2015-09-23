@@ -177,6 +177,24 @@ private:
                      llvm::BasicBlock *defaultBlock);
 };
 
+/// ThreadPreemptionPass - Introduce klee_thread_ preemption calls
+class ThreadPreemptionPass : public llvm::ModulePass {
+public:
+  static char ID; // Pass identification, replacement for typeid
+  ThreadPreemptionPass() : ModulePass(ID) {}
+
+  virtual bool runOnModule(llvm::Module &M);
+  bool doInitialization(llvm::Module &M);
+
+private:
+  llvm::SmallVector<std::pair<llvm::Function *, llvm::ConstantInt *>, 16> pthreadFunctions;
+  llvm::Function *preemptFunction;
+
+  bool addPreemptionBefore(llvm::Instruction *I);
+  bool addPreemptionAfter(llvm::Instruction *I);
+  bool addPreemptionAfterIfSuccess(llvm::CallInst *inst, llvm::ConstantInt *ret);
+};
+
 /// InstrumentAccesses: instrument the code in module to find races.
 class InstrumentAccesses : public llvm::FunctionPass {
 public:

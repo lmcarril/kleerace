@@ -146,10 +146,6 @@ extern tsync_data_t __tsync;
 
 void klee_init_threads(void);
 
-static inline void __thread_preempt(int yield) {
-  klee_thread_preempt(yield);
-}
-
 static inline void __thread_sleep(uint64_t wlist) {
   klee_thread_sleep(wlist);
 }
