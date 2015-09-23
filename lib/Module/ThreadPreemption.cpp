@@ -102,8 +102,13 @@ bool ThreadPreemptionPass::runOnModule(Module &M) {
 
   if (ClPreemptAfterIfSuccess) {
     for (SmallVectorImpl<std::pair<CallInst*,ConstantInt *> >::iterator it = pthreadCalls.begin(),
-         ite = pthreadCalls.end(); it != ite; ++it)
+         ite = pthreadCalls.end(); it != ite; ++it) {
+      // Check to avoid a double preeemption
+      if (CallInst *nCall = dyn_cast<CallInst>(it->first->getNextNode()))
+        if (nCall->getCalledFunction() == preemptFunction)
+          continue;
       changed |= addPreemptionAfterIfSuccess(it->first, it->second);
+    }
   }
 
   return changed;
