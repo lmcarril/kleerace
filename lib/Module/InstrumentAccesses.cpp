@@ -31,9 +31,6 @@ using namespace klee;
 static cl::opt<bool>  ClInstrumentMemoryAccesses(
     "instrument-memory-accesses", cl::init(true),
     cl::desc("Instrument memory accesses"));
-/*static cl::opt<bool>  ClInstrumentFuncEntryExit(
-    "instrument-func-entry-exit", cl::init(true),
-    cl::desc("Instrument function entry and exit"));*/
 static cl::opt<bool>  ClInstrumentAtomics(
     "instrument-atomics", cl::init(true),
     cl::desc("Instrument atomics"), cl::Hidden);
@@ -50,20 +47,15 @@ static Function *checkInterfaceFunction(Constant *FuncOrBitcast) {
   report_fatal_error("Instrument Memory Access Pass interface function redefined");
 }
 
-void InstrumentAccesses::initializeCallbacks(Module &M) {
-  IRBuilder<> IRB(M.getContext());
-  // Initialize the callbacks.
-  OrdTy = IRB.getInt32Ty();
-
-  // void klee_mem_access(void * address, size_t size, bool isWrite, bool isAtomic)
-  Access = checkInterfaceFunction(
-      M.getOrInsertFunction("klee_mem_access",
-                            IRB.getVoidTy(), IRB.getInt8PtrTy(), IntptrTy, IRB.getInt8Ty(), IRB.getInt8Ty(), NULL));
-}
-
 bool InstrumentAccesses::doInitialization(Module &M) {
   IRBuilder<> IRB(M.getContext());
   IntptrTy = IRB.getIntPtrTy(&DL);
+
+  // void klee_mem_access(void * address, size_t size, bool isWrite, bool isAtomic)
+  Access = checkInterfaceFunction(M.getOrInsertFunction("klee_mem_access",
+                                                        IRB.getVoidTy(), IRB.getInt8PtrTy(),
+                                                        IntptrTy, IRB.getInt8Ty(),
+                                                        IRB.getInt8Ty(), NULL));
   return true;
 }
 
@@ -149,7 +141,6 @@ static bool isAtomic(Instruction *I) {
 }
 
 bool InstrumentAccesses::runOnFunction(Function &F) {
-  initializeCallbacks(*F.getParent());
   SmallVector<Instruction*, 8> RetVec;
   SmallVector<Instruction*, 8> AllLoadsAndStores;
   SmallVector<Instruction*, 8> LocalLoadsAndStores;

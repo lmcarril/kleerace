@@ -180,13 +180,13 @@ private:
 /// InstrumentAccesses: instrument the code in module to find races.
 class InstrumentAccesses : public llvm::FunctionPass {
 public:
+  static char ID;  // Pass identification, replacement for typeid.
   InstrumentAccesses(const llvm::DataLayout &_DL) : FunctionPass(ID),DL(_DL) {}
+
   bool runOnFunction(llvm::Function &F);
   bool doInitialization(llvm::Module &M);
-  static char ID;  // Pass identification, replacement for typeid.
 
- private:
-  void initializeCallbacks(llvm::Module &M);
+private:
   bool instrumentLoadOrStore(llvm::Instruction *I, const llvm::DataLayout &DL);
   bool instrumentAtomic(llvm::Instruction *I, const llvm::DataLayout &DL);
   bool instrumentMemIntrinsic(llvm::Instruction *I);
@@ -196,10 +196,8 @@ public:
   bool addrPointsToConstantData(llvm::Value *Addr);
   int getMemoryAccessWidth(llvm::Value *Addr, const llvm::DataLayout &DL);
 
-
   const llvm::DataLayout &DL;
   llvm::Type *IntptrTy;
-  llvm::IntegerType *OrdTy;
   // Callbacks to run-time library are computed in doInitialization.
   llvm::Function *Access;
 };
