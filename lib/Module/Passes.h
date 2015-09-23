@@ -187,12 +187,12 @@ public:
   bool doInitialization(llvm::Module &M);
 
 private:
-  llvm::SmallVector<llvm::Function *, 16> pthreadFunctions;
+  llvm::SmallVector<std::pair<llvm::Function *, llvm::ConstantInt *>, 16> pthreadFunctions;
   llvm::Function *preemptFunction;
 
   bool addPreemptionBefore(llvm::Instruction *I);
   bool addPreemptionAfter(llvm::Instruction *I);
-  bool addPreemptionAfterIfSuccess(llvm::CallInst *inst);
+  bool addPreemptionAfterIfSuccess(llvm::CallInst *inst, llvm::ConstantInt *ret);
 };
 
 }

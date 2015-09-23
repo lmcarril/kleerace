@@ -20,18 +20,20 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 using namespace llvm;
 using namespace klee;
 
 static cl::opt<bool>
 ClPreemptBefore("preempt-before-pthread",
-        cl::desc("Add preemption points before the relevant pthread calls"),
+        cl::desc("Add preemption points before pthread calls (default=off)"),
         cl::init(false));
+
 static cl::opt<bool>
-ClPreemptAfter("preempt-after-pthread",
-        cl::desc("Add preemption points after the relevant pthread calls, if the call is succesful"),
-        cl::init(false));
+ClPreemptAfterIfSuccess("preempt-after-pthread-success",
+        cl::desc("Add preemption points after pthread calls, if the call is succesful (default=on)"),
+        cl::init(true));
 
 char ThreadPreemptionPass::ID = 0;
 
@@ -42,27 +44,38 @@ static Function *checkInterfaceFunction(Constant *FuncOrBitcast) {
   report_fatal_error("Instrument Memory Access Pass interface function redefined");
 }
 
+static const int nPthreadNames = 14;
+static const char * pthreadFuncNames[nPthreadNames] = {
+  "pthread_create",
+  "pthread_mutex_lock",
+  "pthread_mutex_trylock",
+  "pthread_mutex_unlock",
+  "pthread_cond_wait",
+  "pthread_cond_signal",
+  "pthread_rwlock_rdlock",
+  "pthread_rwlock_tryrdlock",
+  "pthread_rwlock_wrlock",
+  "pthread_rwlock_trywrlock",
+  "pthread_rwlock_unlock",
+  "sem_wait",
+  "sem_trywait",
+  "sem_post"
+};
+
 bool ThreadPreemptionPass::doInitialization(Module &M) {
   IRBuilder<> IRB(M.getContext());
   // void klee_thread_preempt(int yield)
   preemptFunction = checkInterfaceFunction(M.getOrInsertFunction("klee_thread_preempt",
                                                              IRB.getVoidTy(), IRB.getInt32Ty(), NULL));
 
-  if (Function* f = M.getFunction("pthread_create")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_mutex_lock")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_mutex_trylock")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_mutex_unlock")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_cond_wait")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_cond_signal")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_barrier_wait")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_rwlock_rdlock")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_rwlock_tryrdlock")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_rwlock_wrlock")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_rwlock_trywrlock")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("pthread_rwlock_unlock")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("sem_wait")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("sem_trywait")) pthreadFunctions.push_back(f);
-  if (Function* f = M.getFunction("sem_post")) pthreadFunctions.push_back(f);
+  ConstantInt *zero = ConstantInt::get(IRB.getInt32Ty(), 0);
+  for (int i = 0; i < nPthreadNames; i++)
+    if (Function* f = M.getFunction(pthreadFuncNames[i]))
+      pthreadFunctions.push_back(std::make_pair(f, zero));
+
+  if (Function* f = M.getFunction("pthread_barrier_wait"))
+    pthreadFunctions.push_back(std::make_pair(f, ConstantInt::get(IRB.getInt32Ty(),
+                                                                  PTHREAD_BARRIER_SERIAL_THREAD)));
   return true;
 }
 
@@ -70,30 +83,27 @@ bool ThreadPreemptionPass::runOnModule(Module &M) {
   bool changed = false;
 
   // Collect function call instructions
-  SmallVector<CallInst *, 32> pthreadCalls;
-  for (SmallVectorImpl<Function*>::iterator itF = pthreadFunctions.begin(),
+  SmallVector<std::pair<CallInst *, ConstantInt *>, 32> pthreadCalls;
+  for (SmallVectorImpl<std::pair<Function*, ConstantInt*> >::iterator itF = pthreadFunctions.begin(),
        itFe = pthreadFunctions.end(); itF != itFe; ++itF) {
-    Function *F = *itF;
+    Function *F = itF->first;
     for (Value::use_iterator itU = F->use_begin(),
          itUe = F->use_end(); itU != itUe; ++itU) {
       if (CallInst* call = dyn_cast<CallInst>(*itU))
-        pthreadCalls.push_back(call);
+        pthreadCalls.push_back(std::make_pair(call,itF->second));
     }
   }
 
-  llvm::errs() << "Found "<< pthreadCalls.size()<<"\n";
-
   if (ClPreemptBefore) {
-    for (SmallVectorImpl<CallInst*>::iterator it = pthreadCalls.begin(),
+    for (SmallVectorImpl<std::pair<CallInst*,ConstantInt *> >::iterator it = pthreadCalls.begin(),
          ite = pthreadCalls.end(); it != ite; ++it)
-      changed |= addPreemptionBefore(*it);
+      changed |= addPreemptionBefore(it->first);
   }
 
-  if (ClPreemptAfter) {
-    for (SmallVectorImpl<CallInst*>::iterator it = pthreadCalls.begin(),
+  if (ClPreemptAfterIfSuccess) {
+    for (SmallVectorImpl<std::pair<CallInst*,ConstantInt *> >::iterator it = pthreadCalls.begin(),
          ite = pthreadCalls.end(); it != ite; ++it)
-      //changed |= addPreemptionAfterIfSuccess(*it);
-      changed |= addPreemptionAfter(*it);
+      changed |= addPreemptionAfterIfSuccess(it->first, it->second);
   }
 
   return changed;
@@ -111,7 +121,13 @@ bool ThreadPreemptionPass::addPreemptionAfter(Instruction *I) {
   return true;
 }
 
-bool ThreadPreemptionPass::addPreemptionAfterIfSuccess(CallInst *inst) {
-  // TODO
-  return false;
+bool ThreadPreemptionPass::addPreemptionAfterIfSuccess(CallInst *inst, ConstantInt *ret) {
+  IRBuilder<> IRB(inst->getNextNode());
+  if (!(inst->getCalledFunction()->getFunctionType()->isValidReturnType(ret->getType())))
+    return false;
+
+  Value *cmp = IRB.CreateICmpEQ(inst, ret, "_preemptcmp");
+  TerminatorInst *term = SplitBlockAndInsertIfThen(cast<Instruction>(cmp), false, NULL);
+  addPreemptionBefore(term);
+  return true;
 }
