@@ -39,7 +39,11 @@ namespace {
   cl::opt<bool>
   DebugLogStateMerge("debug-log-state-merge");
 
-  cl::opt<uint64_t>
+  // Tracking BUG: 19665
+  // http://llvm.org/bugs/show_bug.cgi?id=19665
+  //
+  // Do not change to cl::opt<uint64_t> since this silently breaks argument parsing.
+  cl::opt<unsigned long long>
   TimeSeed("initial-time",
            cl::desc("Set the initial unix timestamp (default=1)"),
            cl::init(1));
