@@ -213,9 +213,9 @@ namespace {
            cl::init(0));
 
   cl::opt<bool>
-  EnableInstrumentAccesses("enable-instrument-accesses",
-                           cl::desc("Enable pass to instrument memory accesses."),
-                           cl::init(false));
+  DisableInstrumentAccesses("disable-instrument-accesses",
+                            cl::desc("Disable instrumentation of memory accesses."),
+                            cl::init(false));
 }
 
 extern cl::opt<double> MaxTime;
@@ -1289,11 +1289,11 @@ int main(int argc, char **argv, char **envp) {
   }
 #endif
 
-  if (EnableInstrumentAccesses) {
-    PassManager pm2;
+  if (!DisableInstrumentAccesses) {
+    PassManager pm;
     const llvm::DataLayout &DL = DataLayout(mainModule);
-    pm2.add(new InstrumentAccesses(DL));
-    pm2.run(*mainModule);
+    pm.add(new InstrumentAccesses(DL));
+    pm.run(*mainModule);
   }
 
   if (WithPOSIXRuntime) {

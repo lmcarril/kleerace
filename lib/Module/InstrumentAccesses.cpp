@@ -28,15 +28,18 @@
 using namespace llvm;
 using namespace klee;
 
-static cl::opt<bool>  ClInstrumentMemoryAccesses(
-    "instrument-memory-accesses", cl::init(true),
-    cl::desc("Instrument memory accesses"));
-static cl::opt<bool>  ClInstrumentAtomics(
-    "instrument-atomics", cl::init(true),
-    cl::desc("Instrument atomics"), cl::Hidden);
-static cl::opt<bool>  ClInstrumentMemIntrinsics(
-    "instrument-memintrinsics", cl::init(true),
-    cl::desc("Instrument memintrinsics (memset/memcpy/memmove)"), cl::Hidden);
+static cl::opt<bool>
+ClInstrumentMemoryAccesses("instrument-memory-accesses",
+                           cl::desc("Instrument memory accesses"),
+                           cl::init(true));
+static cl::opt<bool>
+ClInstrumentAtomics("instrument-atomics",
+                    cl::desc("Instrument atomics"),
+                    cl::init(true));
+static cl::opt<bool>
+ClInstrumentMemIntrinsics("instrument-memory-function",
+                          cl::desc("Instrument memory functions (memset/memcpy/memmove)"),
+                          cl::init(true));
 
 char InstrumentAccesses::ID = 0;
 
@@ -44,7 +47,7 @@ static Function *checkInterfaceFunction(Constant *FuncOrBitcast) {
   if (Function *F = dyn_cast<Function>(FuncOrBitcast))
     return F;
   FuncOrBitcast->dump();
-  report_fatal_error("Instrument Memory Access Pass interface function redefined");
+  report_fatal_error("InstrumentMemoryAccessesPass interface function redefined");
 }
 
 bool InstrumentAccesses::doInitialization(Module &M) {
