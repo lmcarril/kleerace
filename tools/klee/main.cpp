@@ -1344,7 +1344,7 @@ int main(int argc, char **argv, char **envp) {
     pm.add(new ThreadPreemptionPass());
     pm.run(*mainModule);
 
-    if (RaceDetectionAlgorithm == HybridAlg)
+    if ((RaceDetectionAlgorithm == WeakHappensBeforeAlg) || (RaceDetectionAlgorithm == HybridAlg))
       mainModule->getGlobalVariable("disable_vc_mutex")
                 ->setInitializer(ConstantInt::get(Type::getInt32Ty(getGlobalContext()),1));
   }  

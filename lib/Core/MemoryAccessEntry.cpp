@@ -50,6 +50,7 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
 
   switch(RaceDetectionAlgorithm) {
     case HappensBeforeAlg:
+    case WeakHappensBeforeAlg:
       if (vc->happensBefore(*other.vc) || other.vc->happensBefore(*vc))
         return false;
       break;
