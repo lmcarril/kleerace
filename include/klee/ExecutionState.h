@@ -216,7 +216,8 @@ public:
     return;
   }
 
-  typedef std::vector<ref<MemoryAccessEntry> > memory_access_register_t;
+  /* Map of memory object ids and corresponding memory accesses*/
+  typedef std::map<unsigned, std::vector<ref<MemoryAccessEntry> > > memory_access_register_t;
   memory_access_register_t memoryAccesses;
 
   bool logMemAccesses;

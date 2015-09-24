@@ -3894,14 +3894,15 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
   ref<MemoryAccessEntry> newEntry = MemoryAccessEntry::create(state.crtThread().getTid(),
                                                               state.crtThread().getVectorClock(),
                                                               lockset,
-                                                              address, bytes, mo->id, loc,
+                                                              address, bytes, loc,
                                                               isWrite, isAtomic,
                                                               state.schedulingHistory.size());
 
   std::string str;
   llvm::raw_string_ostream sos(str);
-  for (ExecutionState::memory_access_register_t::const_iterator it = state.memoryAccesses.begin();
-       it != state.memoryAccesses.end(); ++it) {
+  for (std::vector<ref<MemoryAccessEntry> >::const_iterator it = state.memoryAccesses[mo->id].begin(),
+       ite = state.memoryAccesses[mo->id].end();
+       it != ite; ++it) {
     if (newEntry->isRace(state, *solver, **it)) {
       std::string allocInfo;
       mo->getAllocInfo(allocInfo);
@@ -3912,7 +3913,7 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
       }
     }
   }
-  state.memoryAccesses.push_back(newEntry);
+  state.memoryAccesses[mo->id].push_back(newEntry);
 
   std::string race = sos.str();
   if (!race.empty()) {

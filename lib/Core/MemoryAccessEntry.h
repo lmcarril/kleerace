@@ -22,7 +22,6 @@ private:
   ref<Expr> address;
   unsigned length;
   ref<Expr> end;
-  unsigned moId; // Id of the corresponding MemoryObject, maybe a ref<MO> is better
   const InstructionInfo *location;
   bool isWrite;
   bool isAtomic;
@@ -31,26 +30,26 @@ private:
   MemoryAccessEntry(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
                     const ref<Lockset> _lockset, const ref<Expr> _address,
                     unsigned _length, const ref<Expr> _end,
-                    unsigned _moId, const InstructionInfo *_location,
+                    const InstructionInfo *_location,
                     bool _isWrite, bool _isAtomic,
                     std::vector<Thread::thread_id_t>::size_type _scheduleIndex) :
                     thread(_thread), vc(_vc), lockset(_lockset),
                     address(_address), length(_length), end(_end),
-                    moId(_moId), location(_location), isWrite(_isWrite), isAtomic(_isAtomic),
+                    location(_location), isWrite(_isWrite), isAtomic(_isAtomic),
                     scheduleIndex(_scheduleIndex), refCount(0) {};
 
 public:
   unsigned refCount;
   static ref<MemoryAccessEntry> create(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
                                        const ref<Lockset> _lockset, const ref<Expr> _address, unsigned _length,
-                                       unsigned _moId, const InstructionInfo *_location,
+                                       const InstructionInfo *_location,
                                        bool _isWrite, bool _isAtomic,
                                        std::vector<Thread::thread_id_t>::size_type _scheduleIndex);
 
   static ref<MemoryAccessEntry> alloc(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
                                       const ref<Lockset> _lockset, const ref<Expr> _address,
                                       unsigned _length, const ref<Expr> _end,
-                                      unsigned _moId, const InstructionInfo *_location,
+                                      const InstructionInfo *_location,
                                       bool _isWrite, bool _isAtomic,
                                       std::vector<Thread::thread_id_t>::size_type _scheduleIndex);
 
