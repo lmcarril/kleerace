@@ -17,35 +17,35 @@ using namespace klee;
 
 ref<MemoryAccessEntry> MemoryAccessEntry::create(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
                                                  const ref<Lockset> _lockset, const ref<Expr> _address, unsigned _length,
-                                                 const std::string _varName, const InstructionInfo *_location,
+                                                 unsigned _moId, const InstructionInfo *_location,
                                                  bool _isWrite, bool _isAtomic,
                                                  std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
 
   ref<Expr> end(AddExpr::create(_address, ConstantExpr::create(_length, _address->getWidth())));
-  return MemoryAccessEntry::alloc(_thread, _vc, _lockset, _address, _length, end, _varName, _location, _isWrite, _isAtomic, _scheduleIndex);
+  return MemoryAccessEntry::alloc(_thread, _vc, _lockset, _address, _length, end, _moId, _location, _isWrite, _isAtomic, _scheduleIndex);
 }
 
 ref<MemoryAccessEntry> MemoryAccessEntry::alloc(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
                                                 const ref<Lockset> _lockset, const ref<Expr> _address, unsigned _length, const ref<Expr> _end,
-                                                const std::string _varName, const InstructionInfo *_location,
+                                                unsigned _moId, const InstructionInfo *_location,
                                                 bool _isWrite, bool _isAtomic,
                                                 std::vector<Thread::thread_id_t>::size_type _scheduleIndex) {
-  ref<MemoryAccessEntry> r(new MemoryAccessEntry(_thread, _vc, _lockset, _address, _length, _end, _varName, _location, _isWrite, _isAtomic, _scheduleIndex));
+  ref<MemoryAccessEntry> r(new MemoryAccessEntry(_thread, _vc, _lockset, _address, _length, _end, _moId, _location, _isWrite, _isAtomic, _scheduleIndex));
   return r;
 }
 
 bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver, const MemoryAccessEntry &other) const {
+  if (moId != other.moId)
+    return false;
+
   if (thread == other.thread)
     return false;
 
   if (!isWrite && !other.isWrite)
     return false;
 
-  if (isAtomic && other.isAtomic)
-    return false;
   // TODO atomic read/write vs normal read/write, any case is not a race?
-
-  if (varName != other.varName)
+  if (isAtomic && other.isAtomic)
     return false;
 
   switch(RaceDetectionAlgorithm) {
@@ -77,6 +77,11 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
 }
 
 int MemoryAccessEntry::compare(const MemoryAccessEntry &other) const {
+  if (moId < other.moId)
+    return -1;
+  else if (moId > other.moId)
+    return 1;
+
   if (thread < other.thread)
     return -1;
   else if (thread > other.thread)

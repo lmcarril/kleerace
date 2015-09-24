@@ -3889,18 +3889,12 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
       loc->file.find("Intrinsic") != std::string::npos))
    return;
 
-  std::string varName; // TODO do not rely in varName, instead in ObjectState
-  if (mo && mo->allocSite)
-    varName = mo->allocSite->getName().str();
-  else
-    klee_message("Invalid retrieval of object name in race detection handling");
-
   ref<Lockset> lockset = isWrite? state.crtThread().getWriteLockset() : state.crtThread().getLockset();
 
   ref<MemoryAccessEntry> newEntry = MemoryAccessEntry::create(state.crtThread().getTid(),
                                                               state.crtThread().getVectorClock(),
                                                               lockset,
-                                                              address, bytes, varName, loc,
+                                                              address, bytes, mo->id, loc,
                                                               isWrite, isAtomic,
                                                               state.schedulingHistory.size());
 
@@ -3909,7 +3903,9 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
   for (ExecutionState::memory_access_register_t::const_iterator it = state.memoryAccesses.begin();
        it != state.memoryAccesses.end(); ++it) {
     if (newEntry->isRace(state, *solver, **it)) {
-      RaceReport rr(newEntry, *it, state.schedulingHistory);
+      std::string allocInfo;
+      mo->getAllocInfo(allocInfo);
+      RaceReport rr(allocInfo, newEntry, *it, state.schedulingHistory);
       if (RaceReport::emittedReports.insert(rr).second) {
         sos << "Detected race #" << RaceReport::emittedReports.size() << ":\n"
             << rr << "\n";

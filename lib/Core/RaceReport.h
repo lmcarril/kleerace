@@ -12,6 +12,7 @@ namespace klee {
 
 class RaceReport {
 private:
+  const std::string allocInfo;
   const ref<MemoryAccessEntry> current;
   const ref<MemoryAccessEntry> previous;
   const std::vector<Thread::thread_id_t> schedulingHistory;
@@ -23,9 +24,11 @@ private:
 public:
   static std::set<RaceReport> emittedReports;
 
-  RaceReport(const ref<MemoryAccessEntry> &_current, const ref<MemoryAccessEntry> &_previous,
+  RaceReport(const std::string _allocInfo,
+             const ref<MemoryAccessEntry> &_current, const ref<MemoryAccessEntry> &_previous,
              const std::vector<Thread::thread_id_t> &_schedulingHistory) :
-             current(_current), previous(_previous), schedulingHistory(_schedulingHistory) {}
+             allocInfo(_allocInfo), current(_current), previous(_previous),
+             schedulingHistory(_schedulingHistory) {}
 
   bool operator<(const RaceReport &rr) const;
 

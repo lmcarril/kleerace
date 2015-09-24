@@ -19,7 +19,7 @@ bool RaceReport::operator<(const RaceReport &rr) const {
 
 void RaceReport::print(llvm::raw_ostream &os) const {
   os << "========\n";
-  os << "Race found on variable: " << current->varName << "\n";
+  os << "Race found on: " << allocInfo << "\n";
   os << current << "\n";
   os << "    schedule ";
   printSchedule(os, current->scheduleIndex, schedulingHistory);
