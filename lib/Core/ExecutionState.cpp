@@ -38,6 +38,11 @@ using namespace klee;
 namespace { 
   cl::opt<bool>
   DebugLogStateMerge("debug-log-state-merge");
+
+  cl::opt<uint64_t>
+  TimeSeed("initial-time",
+           cl::desc("Set the initial unix timestamp (default=1)"),
+           cl::init(1));
 }
 
 ExecutionState::ExecutionState(KFunction *kf) :
@@ -53,12 +58,14 @@ ExecutionState::ExecutionState(KFunction *kf) :
     wlistCounter(1),
     preemptions(0) {
   setupMain(kf);
+  stateTime = TimeSeed;
 }
 
 ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
   : constraints(assumptions), queryCost(0.), ptreeNode(0),
     wlistCounter(1), preemptions(0) {
   setupMain(NULL);
+  stateTime = TimeSeed;
 }
 
 void ExecutionState::setupMain(KFunction *kf) {
@@ -102,6 +109,8 @@ ExecutionState::ExecutionState(const ExecutionState& state):
     ptreeNode(state.ptreeNode),
     symbolics(state.symbolics),
     arrayNames(state.arrayNames),
+
+    stateTime(state.stateTime),
 
     threads(state.threads),
     waitingLists(state.waitingLists),
