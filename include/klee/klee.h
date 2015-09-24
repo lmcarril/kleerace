@@ -176,6 +176,11 @@ extern "C" {
   /* Enable one or all threads in the specified waiting list */
   void klee_thread_notify(uint64_t wlist, int all);
 
+  /* Get current time */
+  uint64_t klee_get_time(void);
+
+  /* Set current time */
+  void klee_set_time(uint64_t value);
 #ifdef __cplusplus
 }
 #endif

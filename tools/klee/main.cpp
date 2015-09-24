@@ -756,6 +756,8 @@ static const char *modelledExternals[] = {
   "klee_thread_preempt",
   "klee_thread_sleep",
   "klee_thread_terminate",
+  "klee_get_time",
+  "klee_set_time",
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 1)
   "llvm.dbg.declare",
   "llvm.dbg.value",
