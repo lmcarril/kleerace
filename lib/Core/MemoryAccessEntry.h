@@ -12,7 +12,6 @@
 #include <vector>
 
 namespace klee {
-
 class MemoryAccessEntry {
   friend class RaceReport;
 

@@ -2,6 +2,9 @@
 
 // FIXME: This does not belong here.
 #include "../lib/Core/Common.h"
+// To configure race-detection algorithm
+#include "../lib/Core/RaceDetection.h"
+// For InstrumentAccessPass and ThreadPreemptionPass
 #include "../lib/Module/Passes.h"
 
 #include "klee/ExecutionState.h"
@@ -1340,6 +1343,10 @@ int main(int argc, char **argv, char **envp) {
     PassManager pm;
     pm.add(new ThreadPreemptionPass());
     pm.run(*mainModule);
+
+    if (RaceDetectionAlgorithm == HybridAlg)
+      mainModule->getGlobalVariable("disable_vc_mutex")
+                ->setInitializer(ConstantInt::get(Type::getInt32Ty(getGlobalContext()),1));
   }  
 
   // Get the desired main function.  klee_main initializes uClibc

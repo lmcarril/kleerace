@@ -54,6 +54,10 @@
 
 #include <klee/klee.h>
 
+// Flag to disable the update of VC by mutexes
+// it is configured by klee main during linkage
+int disable_vc_mutex = 0;
+
 ////////////////////////////////////////////////////////////////////////////////
 // The PThreads API
 ////////////////////////////////////////////////////////////////////////////////
@@ -306,9 +310,11 @@ static int _atomic_mutex_lock(mutex_data_t *mdata, char try) {
   if(mdata->count != -1)
     mdata->count = 1;
 
-  __vclock_update_current(mdata->vc);
-  __vclock_tock_current();
-  __vclock_send_current();
+  if (!disable_vc_mutex) {
+    __vclock_update_current(mdata->vc);
+    __vclock_tock_current();
+    __vclock_send_current();
+  }
   __lockset_acquire(mdata, mdata->owner);
 
   return 0;
@@ -339,9 +345,11 @@ static int _atomic_mutex_unlock(mutex_data_t *mdata) {
 
   mdata->taken = 0;
 
-  __vclock_copy(mdata->vc,__tsync.threads[pthread_self()].vc);
-  __vclock_tock_current();
-  __vclock_send_current();
+  if (!disable_vc_mutex) {
+    __vclock_copy(mdata->vc,__tsync.threads[pthread_self()].vc);
+    __vclock_tock_current();
+    __vclock_send_current();
+  }
   __lockset_release(mdata, mdata->owner);
 
   if (mdata->queued > 0)
