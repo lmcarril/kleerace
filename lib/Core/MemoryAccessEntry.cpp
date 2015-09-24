@@ -48,7 +48,7 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
   switch(RaceDetectionAlgorithm) {
     case HappensBeforeAlg:
     case WeakHappensBeforeAlg:
-      if (vc->happensBefore(*other.vc) || other.vc->happensBefore(*vc))
+      if (vc->isOrdered(*other.vc))
         return false;
       break;
     case LocksetAlg:
@@ -56,7 +56,7 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
         return false;
       break;
     case HybridAlg:
-      if (vc->happensBefore(*other.vc) || other.vc->happensBefore(*vc))
+      if (vc->isOrdered(*other.vc))
         return false;
       if (!lockset->intersect(*other.lockset)->empty())
         return false;

@@ -33,7 +33,9 @@ public:
 
   int compare(const VectorClock &other) const;
 
-  int happensBefore(const VectorClock &other) const;
+  bool happensBefore(const VectorClock &other) const;
+
+  bool isOrdered(const VectorClock &other) const;
 
   void print(llvm::raw_ostream &os) const;
 

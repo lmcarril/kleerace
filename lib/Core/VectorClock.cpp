@@ -29,7 +29,7 @@ int VectorClock::compare(const VectorClock &other) const {
   return 1;
 }
 
-int VectorClock::happensBefore(const VectorClock &other) const {
+bool VectorClock::happensBefore(const VectorClock &other) const {
   bool strictSmallerExists = false;
   bool allLessOrEqual = true;
 
@@ -43,6 +43,10 @@ int VectorClock::happensBefore(const VectorClock &other) const {
     allLessOrEqual &= (*itA <= *itB);
   }
   return (allLessOrEqual && strictSmallerExists);
+}
+
+bool VectorClock::isOrdered(const VectorClock &other) const {
+  return happensBefore(other) || other.happensBefore(*this);
 }
 
 #define ANSI_UNDERLINED_PRE  "\033[4m"
