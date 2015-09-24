@@ -41,6 +41,10 @@ public:
 
   bool empty() const { return locks.empty(); };
 
+  bool disjoint(const Lockset &other) const {
+    return intersect(other)->empty();
+  };
+
   void print(llvm::raw_ostream &os) const;
 };
 

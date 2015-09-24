@@ -52,13 +52,13 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
         return false;
       break;
     case LocksetAlg:
-      if (!lockset->intersect(*other.lockset)->empty())
+      if (!lockset->disjoint(*other.lockset))
         return false;
       break;
     case HybridAlg:
       if (vc->isOrdered(*other.vc))
         return false;
-      if (!lockset->intersect(*other.lockset)->empty())
+      if (!lockset->disjoint(*other.lockset))
         return false;
       break;
     default: klee_error("invalid -race-detection");
