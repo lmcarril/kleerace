@@ -127,6 +127,9 @@ public:
   void addFnAlias(std::string old_fn, std::string new_fn);
   void removeFnAlias(std::string fn);
 
+  // @brief Current time
+  uint64_t stateTime;
+
   // @brief Threads in current state
   threads_ty threads;
 

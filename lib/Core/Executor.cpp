@@ -1214,6 +1214,8 @@ void Executor::stepInstruction(ExecutionState &state) {
   state.prevPC() = state.pc();
   ++state.pc();
 
+  state.stateTime++; // Assume all instructions take 1 unit time (1 usec)
+
   if (stats::instructions==StopAfterNInstructions)
     haltExecution = true;
 }

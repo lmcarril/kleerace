@@ -184,6 +184,12 @@ extern "C" {
 
   /* Adds the mutex to the specified thread lockset */
   void klee_lockset_update(uint64_t tid, void *mutex, char isAcquire, char isWriteMode);
+  
+  /* Get current time */
+  uint64_t klee_get_time(void);
+
+  /* Set current time */
+  void klee_set_time(uint64_t value);
 #ifdef __cplusplus
 }
 #endif

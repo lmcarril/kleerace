@@ -39,6 +39,15 @@ using namespace klee;
 namespace { 
   cl::opt<bool>
   DebugLogStateMerge("debug-log-state-merge");
+
+  // Tracking BUG: 19665
+  // http://llvm.org/bugs/show_bug.cgi?id=19665
+  //
+  // Do not change to cl::opt<uint64_t> since this silently breaks argument parsing.
+  cl::opt<unsigned long long>
+  TimeSeed("initial-time",
+           cl::desc("Set the initial unix timestamp (default=1)"),
+           cl::init(1));
 }
 
 ExecutionState::ExecutionState(KFunction *kf) :
@@ -55,12 +64,14 @@ ExecutionState::ExecutionState(KFunction *kf) :
     preemptions(0),
     logMemAccesses(false) {
   setupMain(kf);
+  stateTime = TimeSeed;
 }
 
 ExecutionState::ExecutionState(const std::vector<ref<Expr> > &assumptions)
   : constraints(assumptions), queryCost(0.), ptreeNode(0),
     wlistCounter(1), preemptions(0), logMemAccesses(false) {
   setupMain(NULL);
+  stateTime = TimeSeed;
 }
 
 void ExecutionState::setupMain(KFunction *kf) {
@@ -104,6 +115,8 @@ ExecutionState::ExecutionState(const ExecutionState& state):
     ptreeNode(state.ptreeNode),
     symbolics(state.symbolics),
     arrayNames(state.arrayNames),
+
+    stateTime(state.stateTime),
 
     threads(state.threads),
     waitingLists(state.waitingLists),

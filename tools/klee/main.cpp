@@ -773,6 +773,8 @@ static const char *modelledExternals[] = {
   "klee_vclock_send",
   "klee_mem_access",
   "klee_lockset_update",
+  "klee_get_time",
+  "klee_set_time",
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 1)
   "llvm.dbg.declare",
   "llvm.dbg.value",
