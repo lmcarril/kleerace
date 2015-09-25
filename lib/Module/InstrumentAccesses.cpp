@@ -29,15 +29,15 @@ using namespace llvm;
 using namespace klee;
 
 static cl::opt<bool>
-ClInstrumentMemoryAccesses("instrument-memory-accesses",
+ClInstrumentMemoryAccesses("instrument-memory-accesses (default=on)",
                            cl::desc("Instrument memory accesses"),
                            cl::init(true));
 static cl::opt<bool>
-ClInstrumentAtomics("instrument-atomics",
+ClInstrumentAtomics("instrument-atomics (default=on)",
                     cl::desc("Instrument atomics"),
                     cl::init(true));
 static cl::opt<bool>
-ClInstrumentMemIntrinsics("instrument-memory-function",
+ClInstrumentMemIntrinsics("instrument-memory-function (default=on)",
                           cl::desc("Instrument memory functions (memset/memcpy/memmove)"),
                           cl::init(true));
 

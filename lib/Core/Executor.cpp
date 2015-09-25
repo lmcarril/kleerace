@@ -276,7 +276,7 @@ namespace {
 
   cl::opt<bool>
   ForkOnSchedule("fork-on-schedule",
-            cl::desc("Fork when various schedules are possible (defaul=disabled)"),
+            cl::desc("Fork when various schedules are possible (default=off)"),
             cl::init(false));
 
   cl::opt<unsigned>
@@ -296,7 +296,7 @@ namespace {
 
   cl::opt<bool>
   CheckMemoryAccesses("check-internal-mem-accesses",
-            cl::desc("Checks for races using interpreted KLEE memory accesses."),
+            cl::desc("Checks for races using interpreted KLEE memory accesses. Use instead of static instrumentation (disable-instrument-accesses) (default=off)"),
             cl::init(false));
 }
 

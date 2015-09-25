@@ -149,8 +149,8 @@ namespace {
     
   cl::opt<bool>
   WithPOSIXRuntime("posix-runtime", 
-		cl::desc("Link with POSIX runtime.  Options that can be passed as arguments to the programs are: --sym-argv <max-len>  --sym-argvs <min-argvs> <max-argvs> <max-len> + file model options"),
-		cl::init(false));
+		cl::desc("Link with POSIX runtime.  Options that can be passed as arguments to the programs are: --sym-argv <max-len>  --sym-argvs <min-argvs> <max-argvs> <max-len> + file model options (default=on)"),
+		cl::init(true));
     
   cl::opt<bool>
   OptimizeModule("optimize", 
@@ -217,7 +217,7 @@ namespace {
 
   cl::opt<bool>
   DisableInstrumentAccesses("disable-instrument-accesses",
-                            cl::desc("Disable instrumentation of memory accesses."),
+                            cl::desc("Disable static instrumentation of memory accesses."),
                             cl::init(false));
 }
 
