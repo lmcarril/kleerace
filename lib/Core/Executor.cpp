@@ -3645,14 +3645,7 @@ Expr::Width Executor::getWidthForLLVMType(LLVM_TYPE_Q llvm::Type *type) const {
 }
 
 bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread) {
-  int enabledCount = 0;
-  for (ExecutionState::threads_ty::iterator it = state.threads.begin();
-      it != state.threads.end();  it++) {
-    if (it->second.enabled)
-      enabledCount++;
-  }
-
-  if (enabledCount == 0) {
+  if (state.enabledThreadIds().empty()) {
     terminateStateOnError(state, " ******** hang (possible deadlock?)", "user.err");
     return false;
   }

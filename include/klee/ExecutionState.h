@@ -164,6 +164,16 @@ public:
     return it;
   }
 
+  // @brief Get enabled threads id
+  std::set<Thread::thread_id_t> enabledThreadIds() {
+    std::set<Thread::thread_id_t> enabled;
+    for (threads_ty::iterator it = threads.begin();
+         it != threads.end();  it++)
+      if (it->second.enabled)
+        enabled.insert(it->second.tid);
+    return enabled;
+  }
+
   // @brief Set thread as active thread
   void scheduleNext(threads_ty::iterator it) {
     assert(it != threads.end());
