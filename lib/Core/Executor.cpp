@@ -3281,9 +3281,9 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         
         bindLocal(instruction, state, result);
       }
-      if (CheckMemoryAccesses)
-        handleRaceDetection(state, address, bytes, isWrite,
-                            isAtomic(instruction->inst), mo, instruction);
+      handleRaceDetection(state, address, bytes, isWrite,
+                          isAtomic(instruction->inst), mo, instruction,
+                          !CheckMemoryAccesses);
       return;
     }
   } 
@@ -3323,9 +3323,9 @@ void Executor::executeMemoryOperation(ExecutionState &state,
         ref<Expr> result = os->read(mo->getOffsetExpr(address), type);
         bindLocal(instruction, *bound, result);
       }
-      if (CheckMemoryAccesses)
-        handleRaceDetection(*bound, address, bytes, isWrite,
-                            isAtomic(instruction->inst), mo, instruction);
+      handleRaceDetection(*bound, address, bytes, isWrite,
+                          isAtomic(instruction->inst), mo, instruction,
+                          !CheckMemoryAccesses);
     }
 
     unbound = branches.second;
@@ -3870,7 +3870,7 @@ void Executor::bindArgumentThreadCreate(KFunction *kf, unsigned index,
 
 void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
                                    bool isWrite, bool isAtomic, const MemoryObject *mo,
-                                   KInstruction *instruction ) {
+                                   KInstruction *instruction, bool onlyLog) {
   if (mo->isLocal)
     return;
 
@@ -3890,6 +3890,10 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
                                                               address, bytes, loc,
                                                               isWrite, isAtomic,
                                                               state.schedulingHistory.size());
+  // Log for DPOR
+  state.crtThread().getSegment().accesses[mo->id].push_back(newEntry);
+  if (onlyLog)
+    return;
 
   std::string str;
   llvm::raw_string_ostream sos(str);
@@ -3907,7 +3911,36 @@ void Executor::handleRaceDetection(ExecutionState &state, ref<Expr> address, uns
     }
   }
   state.memoryAccesses[mo->id].push_back(newEntry);
-
+/*
+  // Iterate on other threads
+  for (ExecutionState::threads_ty::const_iterator itt = state.threads.begin(),
+       itte = state.threads.end();
+       itt != itte; ++itt) {
+    if (state.crtThread().getTid() == itt->first)
+      continue;
+    // Iterate backwards on segments
+    for (std::vector<ThreadSegment>::const_iterator rits = itt->second.segments.begin(),
+         ritse = itt->second.segments.end();
+         rits != ritse; ++rits) {
+      std::map<MemoryObject::id_t, ThreadSegment::accesses_t>::const_iterator accesses = rits->accesses.find(mo->id);
+      if (accesses == rits->accesses.end())
+        continue;
+      // Check each access in the segment
+      for (ThreadSegment::accesses_t::const_iterator it = accesses->second.begin(),
+           ite = accesses->second.end();
+           it != ite; ++it) {
+        if (newEntry->isRace(state, *solver, **it)) {
+          std::string allocInfo;
+          mo->getAllocInfo(allocInfo);
+          RaceReport rr(allocInfo, newEntry, *it, state.schedulingHistory);
+          if (RaceReport::emittedReports.insert(rr).second)
+            sos << "Detected race #" << RaceReport::emittedReports.size() << ":\n"
+                << rr << "\n";
+        }
+      }
+    }
+  }
+*/
   std::string race = sos.str();
   if (!race.empty()) {
     klee_message("%s", race.c_str());

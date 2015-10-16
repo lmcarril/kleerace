@@ -55,6 +55,8 @@
 #include "AddressSpace.h"
 #include "CallPathManager.h"
 #include "Lockset.h"
+#include "Memory.h"
+#include "MemoryAccessEntry.h"
 #include "VectorClock.h"
 
 #include <map>
@@ -88,6 +90,17 @@ struct StackFrame {
   ~StackFrame();
 };
 
+struct ThreadSegment {
+  ref<VectorClock> vc;
+
+  ref<Lockset> lockset;
+  ref<Lockset> writeLockset;
+
+  typedef std::vector<ref<MemoryAccessEntry> >  accesses_t;
+  std::map<MemoryObject::id_t, accesses_t> accesses;
+
+  ThreadSegment(ref<VectorClock> vc, ref<Lockset> lockset, ref<Lockset> writeLockset);
+};
 
 class Thread {
   friend class Executor;
@@ -109,17 +122,19 @@ private:
 
   thread_id_t tid;
 
-  ref<VectorClock> vc;
+  std::vector<ThreadSegment> segments;
 
-  ref<Lockset> lockset;
-  ref<Lockset> writeLockset;
 public:
   Thread(thread_id_t tid, KFunction *start_function);
 
   thread_id_t getTid() const { return tid; }
-  ref<VectorClock> getVectorClock() const { return vc; }
-  ref<Lockset> getLockset() const { return lockset; }
-  ref<Lockset> getWriteLockset() const { return writeLockset; }
+
+  void startSegment(ref<VectorClock> vc, ref<Lockset> lockset, ref<Lockset> writeLockset);
+  ThreadSegment& getSegment() { return segments.back(); }
+
+  ref<VectorClock> getVectorClock() const { return segments.back().vc; }
+  ref<Lockset> getLockset() const { return segments.back().lockset; }
+  ref<Lockset> getWriteLockset() const { return segments.back().writeLockset; }
 };
 
 }

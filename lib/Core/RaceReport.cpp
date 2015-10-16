@@ -33,9 +33,9 @@ void RaceReport::print(llvm::raw_ostream &os) const {
 }
 
 void RaceReport::printSchedule(llvm::raw_ostream &os,
-                               std::vector<Thread::thread_id_t>::size_type scheduleIndex,
-                               const std::vector<Thread::thread_id_t> schedulingHistory) const {
-  for (std::vector<Thread::thread_id_t>::size_type i = 0; i < scheduleIndex;) {
+                               std::vector<MemoryAccessEntry::thread_id_t>::size_type scheduleIndex,
+                               const std::vector<MemoryAccessEntry::thread_id_t> schedulingHistory) const {
+  for (std::vector<MemoryAccessEntry::thread_id_t>::size_type i = 0; i < scheduleIndex;) {
     os << schedulingHistory.at(i);
     if (++i < scheduleIndex)
       os << ",";

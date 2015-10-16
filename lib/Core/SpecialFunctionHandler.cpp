@@ -995,7 +995,7 @@ void SpecialFunctionHandler::handleMemoryAccess(ExecutionState &state, KInstruct
                                        res) &&
            res &&
            "XXX array size out of bounds");
-    executor.handleRaceDetection(state, address, bytes, isWrite, isAtomic, it->first, target);
+    executor.handleRaceDetection(state, address, bytes, isWrite, isAtomic, it->first, target, false);
   }
 }
 

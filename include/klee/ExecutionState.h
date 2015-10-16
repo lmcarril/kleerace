@@ -218,20 +218,13 @@ public:
   bool merge(const ExecutionState &b);
   void dumpStack(llvm::raw_ostream &out) const;
 
-public:
-  void updateVectorClock(Thread::thread_id_t tid, ref<VectorClock> vc) {
-    threads_ty::iterator res = threads.find(tid);
-    if (res != threads.end())
-      res->second.vc = vc;
-    return;
-  }
-
   /* Map of memory object ids and corresponding memory accesses*/
   typedef std::map<unsigned, std::vector<ref<MemoryAccessEntry> > > memory_access_register_t;
   memory_access_register_t memoryAccesses;
 
   bool logMemAccesses;
 
+  void updateVectorClock(Thread::thread_id_t tid, ref<VectorClock> vc);
   void updateLockset(Thread::thread_id_t tid, uint64_t lock_id, bool isAcquire, bool isWriteMode);
 };
 }

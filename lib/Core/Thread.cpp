@@ -70,20 +70,28 @@ StackFrame::~StackFrame() {
   delete[] locals;
 }
 
+ThreadSegment::ThreadSegment(ref<VectorClock> _vc, ref<Lockset> _lockset, ref<Lockset> _writeLockset)
+  : vc(_vc), lockset(_lockset), writeLockset(_writeLockset) {}
+
 /* Thread class methods */
 
 Thread::Thread(thread_id_t tid, KFunction * kf)
   : enabled(true), waitingList(0) {
 
   this->tid = tid;
-  this->vc = VectorClock::create(); // TODO send vector to initiliaze
-  this->lockset = Lockset::create();
-  this->writeLockset = Lockset::create();
-
   if (kf) {
     stack.push_back(StackFrame(0, kf));
 
     pc = kf->instructions;
     prevPC = pc;
   }
+
+  startSegment(VectorClock::create(), Lockset::create(), Lockset::create());
+}
+
+void Thread::startSegment(ref<VectorClock> vc, ref<Lockset> lockset, ref<Lockset> writeLockset) {
+  // Remove previous segment if empty
+  if ((!segments.empty()) && (segments.back().accesses.empty()))
+    segments.pop_back();
+  segments.push_back(ThreadSegment(vc, lockset, writeLockset));
 }

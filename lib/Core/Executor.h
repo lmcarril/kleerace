@@ -417,7 +417,7 @@ private:
 
   void handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
                            bool isWrite, bool isAtomic, const MemoryObject *mo,
-                           KInstruction *instruction);
+                           KInstruction *instruction, bool onlyLog);
 
 public:
   Executor(const InterpreterOptions &opts, InterpreterHandler *ie);

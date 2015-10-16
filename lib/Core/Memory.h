@@ -38,7 +38,8 @@ private:
   mutable unsigned refCount;
 
 public:
-  unsigned id;
+  typedef unsigned id_t;
+  id_t id;
   uint64_t address;
 
   /// size in bytes

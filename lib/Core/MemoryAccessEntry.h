@@ -2,9 +2,9 @@
 #define MEMORYACCESSENTRY_H
 
 #include "Lockset.h"
-#include "Thread.h"
 #include "VectorClock.h"
 
+#include "klee/Expr.h"
 #include "klee/Internal/Module/InstructionInfoTable.h"
 
 #include "llvm/Support/raw_ostream.h"
@@ -12,11 +12,18 @@
 #include <vector>
 
 namespace klee {
+class ExecutionState;
+class TimingSolver;
+
 class MemoryAccessEntry {
   friend class RaceReport;
 
 private:
-  Thread::thread_id_t thread;
+  // TODO should be the same as Thread::thread_id_t
+  // But including Thread produces a dependecy cycle between MemoryAccessEntry, Thread and ThreadSegment
+  // forward declaration does not help => incomplete type madness
+  typedef uint64_t thread_id_t;
+  thread_id_t thread;
   ref<VectorClock> vc;
   ref<Lockset> lockset;
   ref<Expr> address;
@@ -25,14 +32,14 @@ private:
   const InstructionInfo *location;
   bool isWrite;
   bool isAtomic;
-  std::vector<Thread::thread_id_t>::size_type scheduleIndex;
+  std::vector<thread_id_t>::size_type scheduleIndex;
 
-  MemoryAccessEntry(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
+  MemoryAccessEntry(thread_id_t _thread, const ref<VectorClock> _vc,
                     const ref<Lockset> _lockset, const ref<Expr> _address,
                     unsigned _length, const ref<Expr> _end,
                     const InstructionInfo *_location,
                     bool _isWrite, bool _isAtomic,
-                    std::vector<Thread::thread_id_t>::size_type _scheduleIndex) :
+                    std::vector<thread_id_t>::size_type _scheduleIndex) :
                     thread(_thread), vc(_vc), lockset(_lockset),
                     address(_address), length(_length), end(_end),
                     location(_location), isWrite(_isWrite), isAtomic(_isAtomic),
@@ -40,18 +47,18 @@ private:
 
 public:
   unsigned refCount;
-  static ref<MemoryAccessEntry> create(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
+  static ref<MemoryAccessEntry> create(thread_id_t _thread, const ref<VectorClock> _vc,
                                        const ref<Lockset> _lockset, const ref<Expr> _address, unsigned _length,
                                        const InstructionInfo *_location,
                                        bool _isWrite, bool _isAtomic,
-                                       std::vector<Thread::thread_id_t>::size_type _scheduleIndex);
+                                       std::vector<thread_id_t>::size_type _scheduleIndex);
 
-  static ref<MemoryAccessEntry> alloc(Thread::thread_id_t _thread, const ref<VectorClock> _vc,
+  static ref<MemoryAccessEntry> alloc(thread_id_t _thread, const ref<VectorClock> _vc,
                                       const ref<Lockset> _lockset, const ref<Expr> _address,
                                       unsigned _length, const ref<Expr> _end,
                                       const InstructionInfo *_location,
                                       bool _isWrite, bool _isAtomic,
-                                      std::vector<Thread::thread_id_t>::size_type _scheduleIndex);
+                                      std::vector<thread_id_t>::size_type _scheduleIndex);
 
   int compare(const MemoryAccessEntry &other) const;
 
