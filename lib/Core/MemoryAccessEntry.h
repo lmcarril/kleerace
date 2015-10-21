@@ -62,6 +62,8 @@ public:
 
   int compare(const MemoryAccessEntry &other) const;
 
+  bool overlap(const ExecutionState &state, TimingSolver &solver, const MemoryAccessEntry &other) const;
+
   bool isRace(const ExecutionState &state, TimingSolver &solver, const MemoryAccessEntry &other) const;
 
   void print(llvm::raw_ostream &os) const;

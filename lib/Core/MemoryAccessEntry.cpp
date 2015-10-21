@@ -34,6 +34,13 @@ ref<MemoryAccessEntry> MemoryAccessEntry::alloc(thread_id_t _thread, const ref<V
   return r;
 }
 
+bool MemoryAccessEntry::overlap(const ExecutionState &state, TimingSolver &solver, const MemoryAccessEntry &other) const {
+  // Check if true: address+length >= other.address AND address <= other.address+other.length
+  ref<Expr> overlapExpr = AndExpr::create(UgeExpr::create(end, other.address), UleExpr::create(address, other.end));
+  bool result = false;
+  return (solver.mustBeTrue(state, overlapExpr, result) && result);
+}
+
 bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver, const MemoryAccessEntry &other) const {
   if (thread == other.thread)
     return false;
@@ -64,13 +71,7 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
     default: klee_error("invalid -race-detection");
   }
 
-  // Check if true: address+length >= other.address AND address <= other.address+other.length
-  ref<Expr> overlapExpr = AndExpr::create(UgeExpr::create(end, other.address), UleExpr::create(address, other.end));
-  bool result = false;
-  if (!(solver.mustBeTrue(state, overlapExpr, result) && result))
-    return false;
-
-  return true;
+  return overlap(state, solver, other);
 }
 
 int MemoryAccessEntry::compare(const MemoryAccessEntry &other) const {
