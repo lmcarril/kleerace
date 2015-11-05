@@ -54,11 +54,11 @@ bool InstrumentAccesses::doInitialization(Module &M) {
   IRBuilder<> IRB(M.getContext());
   IntptrTy = IRB.getIntPtrTy(&DL);
 
-  // void klee_mem_access(void * address, size_t size, bool isWrite, bool isAtomic)
+  // void klee_mem_access(void * address, size_t size, bool isWrite, bool isAtomic, bool isRaceCandidate)
   Access = checkInterfaceFunction(M.getOrInsertFunction("klee_mem_access",
                                                         IRB.getVoidTy(), IRB.getInt8PtrTy(),
                                                         IntptrTy, IRB.getInt8Ty(),
-                                                        IRB.getInt8Ty(), NULL));
+                                                        IRB.getInt8Ty(), IRB.getInt8Ty(), NULL));
   return true;
 }
 
@@ -210,10 +210,11 @@ bool InstrumentAccesses::instrumentLoadOrStore(Instruction *I,
   if (isVtableAccess(I))
     llvm::errs() << "Unsupported virtual tables instrumentation\n";
 
-  IRB.CreateCall4(Access, IRB.CreatePointerCast(Addr, IRB.getInt8PtrTy()),
+  IRB.CreateCall5(Access, IRB.CreatePointerCast(Addr, IRB.getInt8PtrTy()),
                   ConstantInt::get(IntptrTy, Idx),//size
                   ConstantInt::get(IRB.getInt8Ty(), IsWrite?1:0),//is write?
                   ConstantInt::get(IRB.getInt8Ty(), 0), //not atomic
+                  ConstantInt::get(IRB.getInt8Ty(), 1), //is race candidate
                  "");
   return true;
 }
@@ -221,23 +222,26 @@ bool InstrumentAccesses::instrumentLoadOrStore(Instruction *I,
 bool InstrumentAccesses::instrumentMemIntrinsic(Instruction *I) {
   IRBuilder<> IRB(I);
   if (MemSetInst *M = dyn_cast<MemSetInst>(I)) {
-    IRB.CreateCall4(Access, IRB.CreatePointerCast(M->getArgOperand(0), IRB.getInt8PtrTy()),
+    IRB.CreateCall5(Access, IRB.CreatePointerCast(M->getArgOperand(0), IRB.getInt8PtrTy()),
                    M->getOperand(2),//size
                    ConstantInt::get(IRB.getInt8Ty(), 1),//write
                    ConstantInt::get(IRB.getInt8Ty(), 0),//not atomic
+                   ConstantInt::get(IRB.getInt8Ty(), 1),//is race candidate
                    "");
   } else if (MemTransferInst *M = dyn_cast<MemTransferInst>(I)) {
     // Read on src
-    IRB.CreateCall4(Access, IRB.CreatePointerCast(M->getArgOperand(1), IRB.getInt8PtrTy()),
+    IRB.CreateCall5(Access, IRB.CreatePointerCast(M->getArgOperand(1), IRB.getInt8PtrTy()),
                    M->getOperand(2),//size
                    ConstantInt::get(IRB.getInt8Ty(), 0),//read
                    ConstantInt::get(IRB.getInt8Ty(), 0),//not atomic
+                   ConstantInt::get(IRB.getInt8Ty(), 1),//is race candidate
                    "");
     // Write on dst
-    IRB.CreateCall4(Access, IRB.CreatePointerCast(M->getArgOperand(0), IRB.getInt8PtrTy()),
+    IRB.CreateCall5(Access, IRB.CreatePointerCast(M->getArgOperand(0), IRB.getInt8PtrTy()),
                    M->getOperand(2),//size
                    ConstantInt::get(IRB.getInt8Ty(), 1),//write
                    ConstantInt::get(IRB.getInt8Ty(), 0),//not atomic
+                   ConstantInt::get(IRB.getInt8Ty(), 1),//is race candidate
                    "");
   }
   return true;
@@ -251,10 +255,11 @@ bool InstrumentAccesses::instrumentAtomic(Instruction *I, const DataLayout &DL) 
     if (Idx < 0)
       return false;
 
-    IRB.CreateCall4(Access, IRB.CreatePointerCast(Addr, IRB.getInt8PtrTy()),
+    IRB.CreateCall5(Access, IRB.CreatePointerCast(Addr, IRB.getInt8PtrTy()),
                     ConstantInt::get(IntptrTy, Idx),//size
                     ConstantInt::get(IRB.getInt8Ty(), 0),//read
                     ConstantInt::get(IRB.getInt8Ty(), 1),//atomic
+                    ConstantInt::get(IRB.getInt8Ty(), 1),//is race candidate
                     "");
   } else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
     Value *Addr = SI->getPointerOperand();
@@ -262,10 +267,11 @@ bool InstrumentAccesses::instrumentAtomic(Instruction *I, const DataLayout &DL) 
     if (Idx < 0)
       return false;
 
-    IRB.CreateCall4(Access, IRB.CreatePointerCast(Addr, IRB.getInt8PtrTy()),
+    IRB.CreateCall5(Access, IRB.CreatePointerCast(Addr, IRB.getInt8PtrTy()),
                     ConstantInt::get(IntptrTy, Idx),//size
                     ConstantInt::get(IRB.getInt8Ty(), 1),//write
                     ConstantInt::get(IRB.getInt8Ty(), 1),//atomic
+                    ConstantInt::get(IRB.getInt8Ty(), 1),//is race candidate
                     "");
   } else if (AtomicRMWInst *RMWI = dyn_cast<AtomicRMWInst>(I)) {
     Value *Addr = RMWI->getPointerOperand();
@@ -273,10 +279,11 @@ bool InstrumentAccesses::instrumentAtomic(Instruction *I, const DataLayout &DL) 
     if (Idx < 0)
       return false;
 
-    IRB.CreateCall4(Access, IRB.CreatePointerCast(Addr, IRB.getInt8PtrTy()),
+    IRB.CreateCall5(Access, IRB.CreatePointerCast(Addr, IRB.getInt8PtrTy()),
                     ConstantInt::get(IntptrTy, Idx),//size
                     ConstantInt::get(IRB.getInt8Ty(), 1),//write
                     ConstantInt::get(IRB.getInt8Ty(), 1),//atomic
+                    ConstantInt::get(IRB.getInt8Ty(), 1),//is race candidate
                     "");
   } else if (AtomicCmpXchgInst *CASI = dyn_cast<AtomicCmpXchgInst>(I)) {
     Value *Addr = CASI->getPointerOperand();
@@ -284,10 +291,11 @@ bool InstrumentAccesses::instrumentAtomic(Instruction *I, const DataLayout &DL) 
     if (Idx < 0)
       return false;
 
-    IRB.CreateCall4(Access, IRB.CreatePointerCast(Addr, IRB.getInt8PtrTy()),
+    IRB.CreateCall5(Access, IRB.CreatePointerCast(Addr, IRB.getInt8PtrTy()),
                     ConstantInt::get(IntptrTy, Idx),//size
                     ConstantInt::get(IRB.getInt8Ty(), 1),//write? XXX really depends on success or not...
                     ConstantInt::get(IRB.getInt8Ty(), 1),//atomic
+                    ConstantInt::get(IRB.getInt8Ty(), 1),//is race candidate
                     "");
   }
   return true;

@@ -417,9 +417,12 @@ private:
 
   KFunction* resolveFunction(ref<Expr> address);
 
-  void handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
-                           bool isWrite, bool isAtomic, const MemoryObject *mo,
-                           KInstruction *instruction, bool onlyLog);
+  void logMemoryAccess(ExecutionState &state, ref<Expr> address, unsigned bytes,
+                       bool isWrite, bool isAtomic, const MemoryObject *mo,
+                       KInstruction *instruction, bool raceCandidate);
+
+  void handleRaceDetection(ExecutionState &state, const MemoryObject *mo,
+                           const ref<MemoryAccessEntry>& ma);
 
   ForkTag getForkTag(const ExecutionState &state, ForkType reason);
 

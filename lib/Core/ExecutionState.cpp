@@ -124,7 +124,7 @@ ExecutionState::ExecutionState(const ExecutionState& state):
     preemptions(state.preemptions),
     schedulingHistory(state.schedulingHistory),
 
-    memoryAccesses(state.memoryAccesses),
+    raceCandidates(state.raceCandidates),
     logMemAccesses(state.logMemAccesses)
 {
   for (unsigned int i=0; i<symbolics.size(); i++)

@@ -977,13 +977,15 @@ void SpecialFunctionHandler::handleVectorClockSend(ExecutionState &state, KInstr
 
 void SpecialFunctionHandler::handleMemoryAccess(ExecutionState &state, KInstruction *target,
                                                 std::vector<ref<Expr> > &arguments) {
-  assert(arguments.size() == 4 && "invalid number of arguments to klee_mem_access");
+  assert(arguments.size() == 5 && "invalid number of arguments to klee_mem_access");
 
   unsigned bytes = cast<ConstantExpr>(executor.toUnique(state, arguments[1]))->getZExtValue();
 
   bool isWrite = cast<ConstantExpr>(executor.toUnique(state, arguments[2]))->getZExtValue();
 
   bool isAtomic = cast<ConstantExpr>(executor.toUnique(state, arguments[3]))->getZExtValue();
+
+  bool isRaceCandidate = cast<ConstantExpr>(executor.toUnique(state, arguments[4]))->getZExtValue();
 
   ref<Expr> address = executor.toUnique(state, arguments[0]);
 
@@ -995,7 +997,7 @@ void SpecialFunctionHandler::handleMemoryAccess(ExecutionState &state, KInstruct
                                        res) &&
            res &&
            "XXX array size out of bounds");
-    executor.handleRaceDetection(state, address, bytes, isWrite, isAtomic, it->first, target, false);
+    executor.logMemoryAccess(state, address, bytes, isWrite, isAtomic, it->first, target, isRaceCandidate);
   }
 }
 

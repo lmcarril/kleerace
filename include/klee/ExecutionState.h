@@ -218,9 +218,9 @@ public:
   bool merge(const ExecutionState &b);
   void dumpStack(llvm::raw_ostream &out) const;
 
-  /* Map of memory object ids and corresponding memory accesses*/
+  /* Map of memory object ids and corresponding race candidates memory accesses*/
   typedef std::map<MemoryObject::id_t, std::vector<ref<MemoryAccessEntry> > > memory_access_register_t;
-  memory_access_register_t memoryAccesses;
+  memory_access_register_t raceCandidates;
 
   bool logMemAccesses;
 
