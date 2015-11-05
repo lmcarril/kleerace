@@ -219,7 +219,7 @@ public:
   void dumpStack(llvm::raw_ostream &out) const;
 
   /* Map of memory object ids and corresponding memory accesses*/
-  typedef std::map<unsigned, std::vector<ref<MemoryAccessEntry> > > memory_access_register_t;
+  typedef std::map<MemoryObject::id_t, std::vector<ref<MemoryAccessEntry> > > memory_access_register_t;
   memory_access_register_t memoryAccesses;
 
   bool logMemAccesses;
