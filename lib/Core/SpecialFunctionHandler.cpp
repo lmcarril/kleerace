@@ -614,7 +614,7 @@ void SpecialFunctionHandler::handleRealloc(ExecutionState &state,
 
   Executor::StatePair zeroSize = executor.fork(state, 
                                                Expr::createIsZero(size), 
-                                               true);
+                                               true, KLEE_FORK_INTERNAL);
   
   if (zeroSize.first) { // size == 0
     executor.executeFree(*zeroSize.first, address, target);   
@@ -622,7 +622,7 @@ void SpecialFunctionHandler::handleRealloc(ExecutionState &state,
   if (zeroSize.second) { // size != 0
     Executor::StatePair zeroPointer = executor.fork(*zeroSize.second, 
                                                     Expr::createIsZero(address), 
-                                                    true);
+                                                    true, KLEE_FORK_INTERNAL);
     
     if (zeroPointer.first) { // address == 0
       executor.executeAlloc(*zeroPointer.first, size, false, target);

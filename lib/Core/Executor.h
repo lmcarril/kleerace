@@ -16,6 +16,7 @@
 #define KLEE_EXECUTOR_H
 
 #include "klee/ExecutionState.h"
+#include "klee/ForkTag.h"
 #include "klee/Interpreter.h"
 #include "klee/Internal/Module/Cell.h"
 #include "klee/Internal/Module/KInstruction.h"
@@ -285,15 +286,16 @@ private:
   /// NULL pointers for states which were unable to be created.
   void branch(ExecutionState &state, 
               const std::vector< ref<Expr> > &conditions,
-              std::vector<ExecutionState*> &result);
+              std::vector<ExecutionState*> &result,
+              ForkType reason);
 
   // Fork current and return states in which condition holds / does
   // not hold, respectively. One of the states is necessarily the
   // current state, and one of the states may be null.
-  StatePair fork(ExecutionState &current, ref<Expr> condition, bool isInternal);
+  StatePair fork(ExecutionState &current, ref<Expr> condition, bool isInternal, ForkType reason);
 
   // Clone the given state, the second state is the given one, the first is the copy.
-  StatePair fork(ExecutionState &current);
+  StatePair fork(ExecutionState &current, ForkType reason);
 
   /// Add the given (boolean) condition as a constraint on state. This
   /// function is a wrapper around the state's addConstraint function
@@ -418,6 +420,8 @@ private:
   void handleRaceDetection(ExecutionState &state, ref<Expr> address, unsigned bytes,
                            bool isWrite, bool isAtomic, const MemoryObject *mo,
                            KInstruction *instruction, bool onlyLog);
+
+  ForkTag getForkTag(const ExecutionState &state, ForkType reason);
 
 public:
   Executor(const InterpreterOptions &opts, InterpreterHandler *ie);
