@@ -5,6 +5,7 @@
 
 namespace klee {
 enum RaceAlg {
+  None,
   HappensBeforeAlg,
   WeakHappensBeforeAlg,
   LocksetAlg,
