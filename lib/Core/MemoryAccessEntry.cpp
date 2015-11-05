@@ -11,6 +11,11 @@ namespace {
   PrintLocksets("print-locksets",
                cl::desc("Print the locksets in memory accesses (default=off)"),
                cl::init(false));
+
+  cl::opt<bool>
+  EarlyCheckBenignRaces("early-check-benign-races",
+               cl::desc("Enable early check of 'benign' races (e.g.: atomic read vs anything), allowing them to be ignored during race detection"),
+               cl::init(false));
 }
 
 using namespace klee;
@@ -48,9 +53,19 @@ bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver
   if (!isWrite && !other.isWrite)
     return false;
 
-  // TODO atomic read/write vs normal read/write, any case is not a race?
   if (isAtomic && other.isAtomic)
     return false;
+
+  if (EarlyCheckBenignRaces) {
+    // XXX Benign race: atomic race vs anything
+    if ((isAtomic && !isWrite) || (other.isAtomic && !other.isWrite))
+      return false;
+
+    // XXX Benign race: atomic write vs any read
+    if ((isAtomic && isWrite && !other.isWrite) ||
+        (other.isAtomic && other.isWrite && !isWrite))
+      return false;
+  }
 
   switch(RaceDetectionAlgorithm) {
     case None:
