@@ -33,7 +33,7 @@
 #ifndef KLEE_FORKTAG_H
 #define KLEE_FORKTAG_H
 
-#include <string>
+#include "llvm/Support/raw_ostream.h"
 
 namespace llvm {
 class Function;
@@ -49,6 +49,17 @@ enum ForkType {
   KLEE_FORK_MULTI    = 3 
 };
 
+inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const ForkType reason) {
+  switch(reason) {
+    case KLEE_FORK_DEFAULT: os << "DEFAULT"; break;
+    case KLEE_FORK_INTERNAL: os << "INTERNAL"; break;
+    case KLEE_FORK_SCHEDULE: os << "SCHEDULE"; break;
+    case KLEE_FORK_MULTI: os << "MULTI"; break;
+    default: os << "UNKNOWN"; break;
+  }
+  return os;
+}
+
 struct ForkTag {
   ForkType forkType;
 
@@ -57,8 +68,15 @@ struct ForkTag {
   const InstructionInfo * instruction;
 
   ForkTag(ForkType _ftype) :
-    forkType(_ftype), function(0), instruction(0) { }
+    forkType(_ftype), function(0), instruction(0) {}
+
+  void print(llvm::raw_ostream &os) const;
 };
+
+inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const ForkTag &tag) {
+  tag.print(os);
+  return os;
+}
 
 }
 
