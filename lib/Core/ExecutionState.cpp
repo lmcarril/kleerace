@@ -465,7 +465,7 @@ void ExecutionState::dumpStack(llvm::raw_ostream &out) const {
 void ExecutionState::updateVectorClock(Thread::thread_id_t tid, ref<VectorClock> vc) {
   threads_ty::iterator res = threads.find(tid);
   if (res != threads.end())
-    res->second.startSegment(vc, res->second.getLockset(), res->second.getWriteLockset());
+    res->second.startSegment(vc, res->second.getLockset(), res->second.getWriteLockset(), getSchedulingIndex());
   return;
 }
 
@@ -477,11 +477,11 @@ void ExecutionState::updateLockset(Thread::thread_id_t tid, uint64_t lock_id,
     if (isAcquire) {
       ref<Lockset> lockset = t.getLockset()->insert(lock_id);
       ref<Lockset> writeLockset = isWriteMode? t.getWriteLockset()->insert(lock_id) : t.getWriteLockset();
-      t.startSegment(t.getVectorClock(), lockset, writeLockset);
+      t.startSegment(t.getVectorClock(), lockset, writeLockset, getSchedulingIndex());
     } else {
       ref<Lockset> lockset = t.getLockset()->erase(lock_id);
       ref<Lockset> writeLockset = t.getWriteLockset()->erase(lock_id);
-      t.startSegment(t.getVectorClock(), lockset, writeLockset);
+      t.startSegment(t.getVectorClock(), lockset, writeLockset, getSchedulingIndex());
     }
   }
 }

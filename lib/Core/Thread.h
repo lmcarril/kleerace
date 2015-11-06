@@ -99,7 +99,10 @@ struct ThreadSegment {
   typedef std::vector<ref<MemoryAccessEntry> >  accesses_t;
   std::map<MemoryObject::id_t, accesses_t> accesses;
 
-  ThreadSegment(ref<VectorClock> vc, ref<Lockset> lockset, ref<Lockset> writeLockset);
+  std::vector<klee::thread_id_t>::size_type scheduleIndex;
+
+  ThreadSegment(ref<VectorClock> vc, ref<Lockset> lockset, ref<Lockset> writeLockset,
+                std::vector<klee::thread_id_t>::size_type scheduleIndex);
 };
 
 class Thread {
@@ -129,7 +132,8 @@ public:
 
   thread_id_t getTid() const { return tid; }
 
-  void startSegment(ref<VectorClock> vc, ref<Lockset> lockset, ref<Lockset> writeLockset);
+  void startSegment(ref<VectorClock> vc, ref<Lockset> lockset, ref<Lockset> writeLockset,
+                    std::vector<Thread::thread_id_t>::size_type scheduleIndex);
   ThreadSegment& getSegment() { return segments.back(); }
 
   ref<VectorClock> getVectorClock() const { return segments.back().vc; }
