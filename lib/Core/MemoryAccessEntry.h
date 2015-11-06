@@ -22,7 +22,7 @@ private:
   // TODO should be the same as Thread::thread_id_t
   // But including Thread produces a dependecy cycle between MemoryAccessEntry, Thread and ThreadSegment
   // forward declaration does not help => incomplete type madness
-  typedef uint64_t thread_id_t;
+  typedef klee::thread_id_t thread_id_t;
   thread_id_t thread;
   ref<VectorClock> vc;
   ref<Lockset> lockset;

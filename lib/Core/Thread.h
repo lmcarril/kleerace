@@ -108,7 +108,7 @@ class Thread {
 
 public:
   typedef std::vector<StackFrame> stack_ty;
-  typedef uint64_t thread_id_t;
+  typedef klee::thread_id_t thread_id_t;
   typedef uint64_t wlist_id_t;
 
 private:
