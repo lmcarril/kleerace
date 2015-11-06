@@ -45,14 +45,16 @@ struct InstructionInfo;
 enum ForkType {
   KLEE_FORK_DEFAULT  = 0,
   KLEE_FORK_INTERNAL = 1,
-  KLEE_FORK_SCHEDULE = 2,
-  KLEE_FORK_MULTI    = 3 
+  KLEE_FORK_BRANCH   = 2,
+  KLEE_FORK_SCHEDULE = 3,
+  KLEE_FORK_MULTI    = 4
 };
 
 inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const ForkType reason) {
   switch(reason) {
     case KLEE_FORK_DEFAULT: os << "DEFAULT"; break;
     case KLEE_FORK_INTERNAL: os << "INTERNAL"; break;
+    case KLEE_FORK_BRANCH: os << "BRANCH"; break;
     case KLEE_FORK_SCHEDULE: os << "SCHEDULE"; break;
     case KLEE_FORK_MULTI: os << "MULTI"; break;
     default: os << "UNKNOWN"; break;

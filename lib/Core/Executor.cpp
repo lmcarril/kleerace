@@ -1586,7 +1586,7 @@ void Executor::executeInstruction(ExecutionState &state, KInstruction *ki) {
       assert(bi->getCondition() == bi->getOperand(0) &&
              "Wrong operand index!");
       ref<Expr> cond = eval(ki, 0, state).value;
-      Executor::StatePair branches = fork(state, cond, false, KLEE_FORK_DEFAULT);
+      Executor::StatePair branches = fork(state, cond, false, KLEE_FORK_BRANCH);
 
       // NOTE: There is a hidden dependency here, markBranchVisited
       // requires that we still be in the context of the branch
