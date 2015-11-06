@@ -295,7 +295,7 @@ private:
   StatePair fork(ExecutionState &current, ref<Expr> condition, bool isInternal, ForkType reason);
 
   // Clone the given state, the second state is the given one, the first is the copy.
-  StatePair fork(ExecutionState &current, ForkType reason);
+  StatePair fork(ExecutionState &current, ForkType reason, bool isFake);
 
   /// Add the given (boolean) condition as a constraint on state. This
   /// function is a wrapper around the state's addConstraint function

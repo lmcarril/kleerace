@@ -964,19 +964,31 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal,
   }
 }
 
-Executor::StatePair Executor::fork(ExecutionState &current, ForkType reason) {
+Executor::StatePair Executor::fork(ExecutionState &current, ForkType reason, bool isFake) {
   ForkTag tag = getForkTag(current, reason);
   ExecutionState *lastState = &current;
 
-  ExecutionState *newState = lastState->branch();
+  ExecutionState *newState = NULL;
 
-  addedStates.insert(newState);
+  if(!isFake) {
+    newState = lastState->branch();
+    addedStates.insert(newState);
+  }
 
   if (lastState->ptreeNode) {
     lastState->ptreeNode->data = 0;
+
+    // TODO Encapsulate
+    if (reason == KLEE_FORK_SCHEDULE || reason == KLEE_FORK_MULTI) {
+      lastState->ptreeNode->tid = lastState->crtThread().getTid();
+      lastState->ptreeNode->enabled = lastState->enabledThreadIds();
+      lastState->ptreeNode->threads = lastState->threadIds();
+    }
+
     std::pair<PTree::Node*,PTree::Node*> res =
         processTree->split(lastState->ptreeNode, newState, lastState, tag);
-    newState->ptreeNode = res.first;
+    if (newState)
+      newState->ptreeNode = res.first;
     lastState->ptreeNode = res.second;
   }
 
@@ -3684,7 +3696,9 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       unsigned long nextTid = replayOut->schedSteps[replaySched];
       klee_message("replay next tid %lu", nextTid);
       if (oldTid == nextTid) {
-        state.schedulingHistory.push_back(oldTid); // The current thread stays as current
+        fork(state, KLEE_FORK_SCHEDULE, true);
+        state.schedulingHistory.push_back(oldIt->first);
+        state.scheduleNext(oldIt); // The current thread stays as current
       } else {
         ExecutionState::threads_ty::iterator finalIt = state.crtThreadIt;
         ExecutionState::threads_ty::iterator it = state.nextThread(finalIt);
@@ -3698,6 +3712,8 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
           terminateStateOnError(state, "replay next thread is not enabled", "user.err");
           return false;
         }
+        fork(state, KLEE_FORK_SCHEDULE, true);
+        state.schedulingHistory.push_back(it->first);
         state.scheduleNext(it);
       }
       replaySched++;
@@ -3715,16 +3731,23 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       while (!it->second.enabled)
         it = state.nextThread(it);
 
-      state.scheduleNext(it);
 
       if (ForkOnSchedule)
-         forkSchedule = true;
+        forkSchedule = true;
+      else
+        fork(state, KLEE_FORK_SCHEDULE, true);
+
+      state.schedulingHistory.push_back(it->first);
+      state.scheduleNext(it);
     } else {
-      state.schedulingHistory.push_back(oldTid); // The current thread stays as current
       if (NoMaxPreemptions || state.preemptions < MaxPreemptions) {
         forkSchedule = true;
         incPreemptions = true;
-      }
+      } else
+        fork(state, KLEE_FORK_SCHEDULE, true);
+
+      state.schedulingHistory.push_back(oldIt->first);
+      state.scheduleNext(oldIt); // The current thread stays as current
     }
   }
 
@@ -3750,21 +3773,17 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       // Choose only enabled states, and, in the case of yielding, do not
       // reschedule the same thread
       if (it->second.enabled && (!yield || it->second.tid != oldTid)) {
-        // TODO Encapsulate
-        lastState->ptreeNode->tid = lastState->crtThread().getTid();
-        lastState->ptreeNode->enabled = lastState->enabledThreadIds();
-        lastState->ptreeNode->threads = lastState->threadIds();
-        // --
 
-        StatePair sp = fork(*lastState, reason);
+        StatePair sp = fork(*lastState, reason, false);
 
         if (incPreemptions)
           sp.first->preemptions = state.preemptions + 1;
 
         sp.first->schedulingHistory.pop_back();
-        //The last sched step has been introduced automatically but
+        // The last sched step has been introduced automatically but
         // do not refer to the original thread, at the beginning of the method
         sp.first->scheduleNext(sp.first->threads.find(it->second.tid));
+        sp.first->schedulingHistory.push_back(it->second.tid);
 
         if (DebugSchedulingHistory) {
           unsigned int depth = sp.first->stack().size() - 1;
@@ -3842,19 +3861,16 @@ void Executor::executeThreadNotifyOne(ExecutionState &state,
   }
 
   ExecutionState *lastState = &state;
-  ForkType reason = KLEE_FORK_SCHEDULE;
+  ForkType reason = KLEE_FORK_INTERNAL; // TODO treat similar to schedule
   for (std::set<Thread::thread_id_t>::iterator it = wl.begin(); it != wl.end();) {
     Thread::thread_id_t tid = *it++;
 
     if (it != wl.end()) {
-      StatePair sp = fork(*lastState, reason);
+      StatePair sp = fork(*lastState, reason, false);
 
       sp.second->notifyOne(wlist, tid);
 
       lastState = sp.first;
-
-      if (reason == KLEE_FORK_SCHEDULE)
-        reason = KLEE_FORK_MULTI;
     } else
       lastState->notifyOne(wlist, tid);
   }

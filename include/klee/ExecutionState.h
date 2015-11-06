@@ -193,7 +193,6 @@ public:
   void scheduleNext(threads_ty::iterator it) {
     assert(it != threads.end());
     crtThreadIt = it;
-    schedulingHistory.push_back(crtThread().tid);
   }
 
   // @brief Generate a new waiting list
