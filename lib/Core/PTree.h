@@ -11,7 +11,7 @@
 #define __UTIL_PTREE_H__
 
 #include <klee/Expr.h>
-#include <klee/ForkTag.h>
+#include <ForkTag.h>
 
 namespace klee {
   class ExecutionState;
