@@ -180,6 +180,15 @@ public:
     return enabled;
   }
 
+  // @brief Get all threads id
+  std::set<Thread::thread_id_t> threadIds() {
+    std::set<Thread::thread_id_t> ids;
+    for (threads_ty::iterator it = threads.begin(), ite = threads.end();
+         it != ite ; ++it)
+      ids.insert(it->second.tid);
+    return ids;
+  }
+
   // @brief Set thread as active thread
   void scheduleNext(threads_ty::iterator it) {
     assert(it != threads.end());
