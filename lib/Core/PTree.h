@@ -11,7 +11,11 @@
 #define __UTIL_PTREE_H__
 
 #include <klee/Expr.h>
-#include <ForkTag.h>
+
+#include "Common.h"
+#include "ForkTag.h"
+
+#include <set>
 
 namespace klee {
   class ExecutionState;
@@ -43,6 +47,11 @@ namespace klee {
     ref<Expr> condition;
 
     ForkTag forkTag;
+
+    // State of threads at PNode instantiation step
+    thread_id_t tid;
+    std::set<thread_id_t> enabled;
+    std::set<thread_id_t> threads;
   private:
     PTreeNode(PTreeNode *_parent, ExecutionState *_data);
     ~PTreeNode();

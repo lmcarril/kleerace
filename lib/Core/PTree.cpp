@@ -97,7 +97,8 @@ PTreeNode::PTreeNode(PTreeNode *_parent,
     right(0),
     data(_data),
     condition(0),
-    forkTag(KLEE_FORK_DEFAULT) {
+    forkTag(KLEE_FORK_DEFAULT),
+    tid(0) {
 }
 
 PTreeNode::~PTreeNode() {

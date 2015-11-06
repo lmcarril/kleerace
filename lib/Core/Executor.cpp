@@ -3750,6 +3750,12 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       // Choose only enabled states, and, in the case of yielding, do not
       // reschedule the same thread
       if (it->second.enabled && (!yield || it->second.tid != oldTid)) {
+        // TODO Encapsulate
+        lastState->ptreeNode->tid = lastState->crtThread().getTid();
+        lastState->ptreeNode->enabled = lastState->enabledThreadIds();
+        lastState->ptreeNode->threads = lastState->threadIds();
+        // --
+
         StatePair sp = fork(*lastState, reason);
 
         if (incPreemptions)
