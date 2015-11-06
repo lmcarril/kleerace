@@ -3888,7 +3888,7 @@ void Executor::logMemoryAccess(ExecutionState &state, ref<Expr> address, unsigne
                                                               lockset,
                                                               address, bytes, loc,
                                                               isWrite, isAtomic,
-                                                              state.schedulingHistory.size());
+                                                              state.getSchedulingIndex());
 
   state.crtThread().getSegment().accesses[mo->id].push_back(newEntry);
 

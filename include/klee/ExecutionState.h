@@ -148,6 +148,10 @@ public:
   // @brief List of context switches performed
   std::vector<Thread::thread_id_t> schedulingHistory;
 
+  std::vector<Thread::thread_id_t>::size_type getSchedulingIndex() {
+    return schedulingHistory.size();
+  }
+
   // @brief Create a new thread in the state
   Thread& createThread(Thread::thread_id_t tid, KFunction *kf);
 
