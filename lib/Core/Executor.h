@@ -426,7 +426,7 @@ private:
 
   ForkTag getForkTag(const ExecutionState &state, ForkType reason);
 
-  void dumpPtree(ExecutionState &state);
+  void dumpPtree(ExecutionState *state);
 
 public:
   Executor(const InterpreterOptions &opts, InterpreterHandler *ie);

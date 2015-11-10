@@ -293,6 +293,11 @@ namespace {
   AllowPartialScheduling("allow-partial-scheduling",
             cl::desc("Allow to continue exploring interleavings after the total number of replay scheduling steps (--replay-out) have been consumed (default=off)"),
             cl::init(false));
+
+  cl::opt<bool>
+  DumpPtree("dump-ptree",
+            cl::desc("Dump ptree at the end of the exploration (default=off)"),
+            cl::init(false));
 }
 
 
@@ -978,12 +983,6 @@ Executor::StatePair Executor::fork(ExecutionState &current, ForkType reason, boo
   if (lastState->ptreeNode) {
     lastState->ptreeNode->data = 0;
 
-    // TODO Encapsulate
-    if (reason == KLEE_FORK_SCHEDULE || reason == KLEE_FORK_MULTI) {
-      lastState->ptreeNode->tid = lastState->crtThread().getTid();
-      lastState->ptreeNode->enabled = lastState->enabledThreadIds();
-      lastState->ptreeNode->threads = lastState->threadIds();
-    }
 
     std::pair<PTree::Node*,PTree::Node*> res =
         processTree->split(lastState->ptreeNode, newState, lastState, tag);
@@ -2784,6 +2783,7 @@ void Executor::terminateState(ExecutionState &state) {
     for (std::vector<Thread::thread_id_t>::iterator it = state.schedulingHistory.begin(); it != state.schedulingHistory.end(); ++it)
        msg << *it << ' ';
     klee_message("%s", msg.str().c_str());
+    dumpPtree(&state);
   }
 
   std::set<ExecutionState*>::iterator it = addedStates.find(&state);
@@ -3699,9 +3699,12 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       unsigned long nextTid = replayOut->schedSteps[replaySched];
       klee_message("replay next tid %lu", nextTid);
       if (oldTid == nextTid) {
+        state.ptreeNode->enabled = state.enabledThreadIds();
         fork(state, KLEE_FORK_SCHEDULE, true);
         state.schedulingHistory.push_back(oldIt->first);
         state.scheduleNext(oldIt); // The current thread stays as current
+        state.ptreeNode->tid = state.crtThread().getTid();
+        state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
       } else {
         ExecutionState::threads_ty::iterator finalIt = state.crtThreadIt;
         ExecutionState::threads_ty::iterator it = state.nextThread(finalIt);
@@ -3715,9 +3718,12 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
           terminateStateOnError(state, "replay next thread is not enabled", "user.err");
           return false;
         }
+        state.ptreeNode->enabled = state.enabledThreadIds();
         fork(state, KLEE_FORK_SCHEDULE, true);
         state.schedulingHistory.push_back(it->first);
         state.scheduleNext(it);
+        state.ptreeNode->tid = state.crtThread().getTid();
+        state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
       }
       replaySched++;
       scheduled = true;
@@ -3734,23 +3740,32 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       while (!it->second.enabled)
         it = state.nextThread(it);
 
-
-      if (ForkOnSchedule)
+      if (ForkOnSchedule) {
         forkSchedule = true;
-      else
+        state.schedulingHistory.push_back(it->first);
+        state.scheduleNext(it);
+      } else {
+        state.ptreeNode->enabled = state.enabledThreadIds();
         fork(state, KLEE_FORK_SCHEDULE, true);
-
-      state.schedulingHistory.push_back(it->first);
-      state.scheduleNext(it);
+        state.schedulingHistory.push_back(it->first);
+        state.scheduleNext(it);
+        state.ptreeNode->tid = state.crtThread().getTid();
+        state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
+      }
     } else {
       if (NoMaxPreemptions || state.preemptions < MaxPreemptions) {
         forkSchedule = true;
         incPreemptions = true;
-      } else
+        state.schedulingHistory.push_back(oldIt->first);
+        state.scheduleNext(oldIt); // The current thread stays as current
+      } else {
+        state.ptreeNode->enabled = state.enabledThreadIds();
         fork(state, KLEE_FORK_SCHEDULE, true);
-
-      state.schedulingHistory.push_back(oldIt->first);
-      state.scheduleNext(oldIt); // The current thread stays as current
+        state.schedulingHistory.push_back(oldIt->first);
+        state.scheduleNext(oldIt); // The current thread stays as current
+        state.ptreeNode->tid = state.crtThread().getTid();
+        state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
+      }
     }
   }
 
@@ -3772,11 +3787,13 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
     ExecutionState::threads_ty::iterator it = state.nextThread(finalIt);
     ExecutionState *lastState = &state;
     ForkType reason = KLEE_FORK_SCHEDULE;
+    bool addFalseFork = true;
     while (it != finalIt) {
       // Choose only enabled states, and, in the case of yielding, do not
       // reschedule the same thread
       if (it->second.enabled && (!yield || it->second.tid != oldTid)) {
-
+        addFalseFork = false;
+        lastState->ptreeNode->enabled = lastState->enabledThreadIds();
         StatePair sp = fork(*lastState, reason, false);
 
         if (incPreemptions)
@@ -3787,6 +3804,8 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         // do not refer to the original thread, at the beginning of the method
         sp.first->scheduleNext(sp.first->threads.find(it->second.tid));
         sp.first->schedulingHistory.push_back(it->second.tid);
+        sp.first->ptreeNode->tid = sp.first->crtThread().getTid();
+        sp.first->ptreeNode->schedulingIndex = sp.first->getSchedulingIndex();
 
         if (DebugSchedulingHistory) {
           unsigned int depth = sp.first->stack().size() - 1;
@@ -3807,6 +3826,13 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       }
 
       it = state.nextThread(it);
+    }
+    // Only needed in the case of a forkSchedule but there is only one context switch
+    if (addFalseFork) {
+      state.ptreeNode->enabled = state.enabledThreadIds();
+      fork(state, KLEE_FORK_SCHEDULE, true);
+      state.ptreeNode->tid = state.crtThread().getTid();
+      state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
     }
   }
   return true;
@@ -3955,10 +3981,13 @@ ForkTag Executor::getForkTag(const ExecutionState &state, ForkType reason) {
   return tag;
 }
 
-void Executor::dumpPtree(ExecutionState &state) {
+void Executor::dumpPtree(ExecutionState *state) {
   char name[32];
-  sprintf(name, "ptree-%02ld-%08d.dot", state.crtThread().getTid(),(int)stats::instructions);
-  llvm::errs() << "Dump ptree:" << name << "\n";
+  if (state)
+    sprintf(name, "ptree-%02ld-%08d.dot", state->crtThread().getTid(),(int)stats::instructions);
+  else
+    sprintf(name, "ptree-%08d.dot", (int)stats::instructions);
+  klee_message("Dumped ptree graph: %s", name);
   llvm::raw_ostream *os = interpreterHandler->openOutputFile(name);
   if (os) {
     processTree->dump(*os);
