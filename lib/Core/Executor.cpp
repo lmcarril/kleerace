@@ -298,6 +298,11 @@ namespace {
   DumpPtree("dump-ptree",
             cl::desc("Dump ptree at the end of the exploration (default=off)"),
             cl::init(false));
+
+  cl::opt<bool>
+  ConservePtreeNodes("conserve-ptree",
+            cl::desc("Do not delete nodes from ptree graph, used for debugging (default=off)"),
+            cl::init(false));
 }
 
 
@@ -2506,7 +2511,10 @@ void Executor::updateStates(ExecutionState *current) {
       seedMap.find(es);
     if (it3 != seedMap.end())
       seedMap.erase(it3);
-    processTree->remove(es->ptreeNode);
+    if (!ConservePtreeNodes)
+      processTree->remove(es->ptreeNode);
+    else
+      es->ptreeNode->data = NULL;
     delete es;
   }
   removedStates.clear();
@@ -2800,7 +2808,10 @@ void Executor::terminateState(ExecutionState &state) {
     if (it3 != seedMap.end())
       seedMap.erase(it3);
     addedStates.erase(it);
-    processTree->remove(state.ptreeNode);
+    if (!ConservePtreeNodes)
+      processTree->remove(state.ptreeNode);
+    else
+      state.ptreeNode->data = NULL;
     delete &state;
   }
 }
