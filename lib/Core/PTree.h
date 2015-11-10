@@ -48,10 +48,12 @@ namespace klee {
 
     ForkTag forkTag;
 
-    // State of threads at PNode instantiation step
+    // Thread at PNode instantiation step
     thread_id_t tid;
+    std::set<thread_id_t>::size_type schedulingIndex;
+
+    // Thread enabled at end of PNode
     std::set<thread_id_t> enabled;
-    std::set<thread_id_t> threads;
   private:
     PTreeNode(PTreeNode *_parent, ExecutionState *_data);
     ~PTreeNode();

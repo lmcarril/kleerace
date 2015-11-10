@@ -9,6 +9,7 @@
 
 #include "PTree.h"
 
+#include <klee/ExecutionState.h>
 #include <klee/Expr.h>
 #include <klee/util/ExprPPrinter.h>
 
@@ -58,7 +59,7 @@ void PTree::dump(llvm::raw_ostream &os) {
   os << "digraph G {\n";
   os << "\tsize=\"10,7.5\";\n";
   os << "\tratio=fill;\n";
-  os << "\trotate=90;\n";
+  os << "\trotate=0;\n";
   os << "\tcenter = \"true\";\n";
   os << "\tnode [style=\"filled\",width=.1,height=.1,fontname=\"Terminus\"]\n";
   os << "\tedge [arrowsize=.3]\n";
@@ -67,10 +68,15 @@ void PTree::dump(llvm::raw_ostream &os) {
   while (!stack.empty()) {
     PTree::Node *n = stack.back();
     stack.pop_back();
+    os << "\tn" << n << " [";
+    os << "label=\"";
+    os << "tid "<< n->tid << "\n";
+    os << n->forkTag << "\n";
+
     if (n->condition.isNull()) {
-      os << "\tn" << n << " [label=\"\"";
+      os << "\"";
     } else {
-      os << "\tn" << n << " [label=\"";
+      os << " ";
       pp->print(n->condition);
       os << "\",shape=diamond";
     }
@@ -97,8 +103,12 @@ PTreeNode::PTreeNode(PTreeNode *_parent,
     right(0),
     data(_data),
     condition(0),
-    forkTag(KLEE_FORK_DEFAULT),
-    tid(0) {
+    forkTag(KLEE_FORK_DEFAULT) {
+  if (data) {
+    tid = data->crtThread().getTid();
+    schedulingIndex = data->getSchedulingIndex();
+    enabled = data->enabledThreadIds();
+  }
 }
 
 PTreeNode::~PTreeNode() {

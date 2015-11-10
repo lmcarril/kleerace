@@ -989,6 +989,9 @@ Executor::StatePair Executor::fork(ExecutionState &current, ForkType reason, boo
         processTree->split(lastState->ptreeNode, newState, lastState, tag);
     if (newState)
       newState->ptreeNode = res.first;
+    else
+      processTree->remove(res.first);
+
     lastState->ptreeNode = res.second;
   }
 
@@ -3952,6 +3955,16 @@ ForkTag Executor::getForkTag(const ExecutionState &state, ForkType reason) {
   return tag;
 }
 
+void Executor::dumpPtree(ExecutionState &state) {
+  char name[32];
+  sprintf(name, "ptree-%02ld-%08d.dot", state.crtThread().getTid(),(int)stats::instructions);
+  llvm::errs() << "Dump ptree:" << name << "\n";
+  llvm::raw_ostream *os = interpreterHandler->openOutputFile(name);
+  if (os) {
+    processTree->dump(*os);
+    delete os;
+  }
+}
 ///
 
 Interpreter *Interpreter::create(const InterpreterOptions &opts,
