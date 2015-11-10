@@ -2783,8 +2783,10 @@ void Executor::terminateState(ExecutionState &state) {
     for (std::vector<Thread::thread_id_t>::iterator it = state.schedulingHistory.begin(); it != state.schedulingHistory.end(); ++it)
        msg << *it << ' ';
     klee_message("%s", msg.str().c_str());
-    dumpPtree(&state);
   }
+
+  if (DumpPtree)
+    dumpPtree(&state);
 
   std::set<ExecutionState*>::iterator it = addedStates.find(&state);
   if (it==addedStates.end()) {

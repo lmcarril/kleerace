@@ -72,6 +72,7 @@ void PTree::dump(llvm::raw_ostream &os) {
     os << "label=\"";
     os << "tid "<< n->tid << "\n";
     os << n->forkTag << "\n";
+    os << "sched " << n->schedulingIndex  << "\n";
 
     if (n->condition.isNull()) {
       os << "\"";
