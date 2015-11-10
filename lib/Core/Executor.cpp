@@ -2793,9 +2793,6 @@ void Executor::terminateState(ExecutionState &state) {
     klee_message("%s", msg.str().c_str());
   }
 
-  if (DumpPtree)
-    dumpPtree(&state);
-
   std::set<ExecutionState*>::iterator it = addedStates.find(&state);
   if (it==addedStates.end()) {
     state.pc() = state.prevPC();
@@ -2822,6 +2819,10 @@ void Executor::terminateStateEarly(ExecutionState &state,
       (AlwaysOutputSeeds && seedMap.count(&state)))
     interpreterHandler->processTestCase(state, (message + "\n").str().c_str(),
                                         "early");
+
+  if (DumpPtree)
+    dumpPtree(&state);
+
   terminateState(state);
 }
 
@@ -2829,6 +2830,10 @@ void Executor::terminateStateOnExit(ExecutionState &state) {
   if (!OnlyOutputStatesCoveringNew || state.coveredNew || 
       (AlwaysOutputSeeds && seedMap.count(&state)))
     interpreterHandler->processTestCase(state, 0, 0);
+
+  if (DumpPtree)
+    dumpPtree(&state);
+
   terminateState(state);
 }
 
@@ -2911,6 +2916,9 @@ void Executor::terminateStateOnError(ExecutionState &state,
     interpreterHandler->processTestCase(state, msg.str().c_str(), suffix);
   }
     
+  if (DumpPtree)
+    dumpPtree(&state);
+
   terminateState(state);
 }
 
