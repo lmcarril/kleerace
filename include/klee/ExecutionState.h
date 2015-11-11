@@ -233,6 +233,7 @@ public:
   /* Map of memory object ids and corresponding race candidates memory accesses*/
   typedef std::map<MemoryObject::id_t, std::vector<ref<MemoryAccessEntry> > > memory_access_register_t;
   memory_access_register_t raceCandidates;
+  memory_access_register_t memoryAccesses;
 
   bool logMemAccesses;
 

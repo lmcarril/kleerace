@@ -3964,6 +3964,8 @@ void Executor::logMemoryAccess(ExecutionState &state, ref<Expr> address, unsigne
 
   state.crtThread().getSegment().accesses[mo->id].push_back(newEntry);
 
+  state.memoryAccesses[mo->id].push_back(newEntry);
+
   if (raceCandidate) {
     state.raceCandidates[mo->id].push_back(newEntry);
     handleRaceDetection(state, mo, newEntry);
