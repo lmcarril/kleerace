@@ -74,6 +74,17 @@ void PTree::dump(llvm::raw_ostream &os) {
     os << n->forkTag << "\n";
     os << "sched " << n->schedulingIndex  << "\n";
 
+    os << "\\[";
+    for (std::set<Thread::thread_id_t>::iterator it = n->enabled.begin(), ite = n->enabled.end();
+         it != ite; ) {
+      os << *it;
+      if (n->done.count(*it))
+        os << "*";
+      if (++it != ite)
+        os << ",";
+    }
+    os << "\\]";
+
     if (n->condition.isNull()) {
       os << "\"";
     } else {
@@ -109,6 +120,7 @@ PTreeNode::PTreeNode(PTreeNode *_parent,
     tid = data->crtThread().getTid();
     schedulingIndex = data->getSchedulingIndex();
     enabled = data->enabledThreadIds();
+    done.insert(tid);
   }
 }
 

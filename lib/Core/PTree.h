@@ -54,6 +54,7 @@ namespace klee {
 
     // Thread enabled at end of PNode
     std::set<Thread::thread_id_t> enabled;
+    std::set<Thread::thread_id_t> done;
   private:
     PTreeNode(PTreeNode *_parent, ExecutionState *_data);
     ~PTreeNode();
