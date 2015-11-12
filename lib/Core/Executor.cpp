@@ -2784,15 +2784,6 @@ void Executor::terminateState(ExecutionState &state) {
 
   interpreterHandler->incPathsExplored();
 
-  if (DebugExploredSchedules && (state.schedulingHistory.size() > 0)) {
-    std::string Str;
-    llvm::raw_string_ostream msg(Str);
-    msg << "Explored schedule: ";
-    for (std::vector<Thread::thread_id_t>::iterator it = state.schedulingHistory.begin(); it != state.schedulingHistory.end(); ++it)
-       msg << *it << ' ';
-    klee_message("%s", msg.str().c_str());
-  }
-
   std::set<ExecutionState*>::iterator it = addedStates.find(&state);
   if (it==addedStates.end()) {
     state.pc() = state.prevPC();
@@ -2820,6 +2811,15 @@ void Executor::terminateStateEarly(ExecutionState &state,
     interpreterHandler->processTestCase(state, (message + "\n").str().c_str(),
                                         "early");
 
+  if (DebugExploredSchedules && (state.schedulingHistory.size() > 0)) {
+    std::string Str;
+    llvm::raw_string_ostream msg(Str);
+    msg << "Explored schedule: ";
+    for (std::vector<Thread::thread_id_t>::iterator it = state.schedulingHistory.begin(); it != state.schedulingHistory.end(); ++it)
+       msg << *it << ' ';
+    klee_message("%s", msg.str().c_str());
+  }
+
   if (DumpPtree)
     dumpPtree(&state);
 
@@ -2830,6 +2830,15 @@ void Executor::terminateStateOnExit(ExecutionState &state) {
   if (!OnlyOutputStatesCoveringNew || state.coveredNew || 
       (AlwaysOutputSeeds && seedMap.count(&state)))
     interpreterHandler->processTestCase(state, 0, 0);
+
+  if (DebugExploredSchedules && (state.schedulingHistory.size() > 0)) {
+    std::string Str;
+    llvm::raw_string_ostream msg(Str);
+    msg << "Explored schedule: ";
+    for (std::vector<Thread::thread_id_t>::iterator it = state.schedulingHistory.begin(); it != state.schedulingHistory.end(); ++it)
+       msg << *it << ' ';
+    klee_message("%s", msg.str().c_str());
+  }
 
   if (DumpPtree)
     dumpPtree(&state);
@@ -2914,6 +2923,15 @@ void Executor::terminateStateOnError(ExecutionState &state,
       msg << "Info: \n" << info_str;
 
     interpreterHandler->processTestCase(state, msg.str().c_str(), suffix);
+  }
+
+  if (DebugExploredSchedules && (state.schedulingHistory.size() > 0)) {
+    std::string Str;
+    llvm::raw_string_ostream msg(Str);
+    msg << "Explored schedule: ";
+    for (std::vector<Thread::thread_id_t>::iterator it = state.schedulingHistory.begin(); it != state.schedulingHistory.end(); ++it)
+       msg << *it << ' ';
+    klee_message("%s", msg.str().c_str());
   }
     
   if (DumpPtree)
