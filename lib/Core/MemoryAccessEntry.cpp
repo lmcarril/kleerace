@@ -20,22 +20,22 @@ namespace {
 
 using namespace klee;
 
-ref<MemoryAccessEntry> MemoryAccessEntry::create(thread_id_t _thread, const ref<VectorClock> _vc,
-                                                 const ref<Lockset> _lockset, const ref<Expr> _address, unsigned _length,
+ref<MemoryAccessEntry> MemoryAccessEntry::create(thread_id_t _thread, const ref<VectorClock> _vc, const ref<Lockset> _lockset,
+                                                 MemoryObject::id_t _mo, const ref<Expr> _address, unsigned _length,
                                                  const InstructionInfo *_location,
                                                  bool _isWrite, bool _isAtomic,
                                                  std::vector<thread_id_t>::size_type _scheduleIndex) {
 
   ref<Expr> end(AddExpr::create(_address, ConstantExpr::create(_length, _address->getWidth())));
-  return MemoryAccessEntry::alloc(_thread, _vc, _lockset, _address, _length, end, _location, _isWrite, _isAtomic, _scheduleIndex);
+  return MemoryAccessEntry::alloc(_thread, _vc, _lockset, _mo, _address, _length, end, _location, _isWrite, _isAtomic, _scheduleIndex);
 }
 
-ref<MemoryAccessEntry> MemoryAccessEntry::alloc(thread_id_t _thread, const ref<VectorClock> _vc,
-                                                const ref<Lockset> _lockset, const ref<Expr> _address, unsigned _length, const ref<Expr> _end,
+ref<MemoryAccessEntry> MemoryAccessEntry::alloc(thread_id_t _thread, const ref<VectorClock> _vc, const ref<Lockset> _lockset,
+                                                MemoryObject::id_t _mo, const ref<Expr> _address, unsigned _length, const ref<Expr> _end,
                                                 const InstructionInfo *_location,
                                                 bool _isWrite, bool _isAtomic,
                                                 std::vector<thread_id_t>::size_type _scheduleIndex) {
-  ref<MemoryAccessEntry> r(new MemoryAccessEntry(_thread, _vc, _lockset, _address, _length, _end, _location, _isWrite, _isAtomic, _scheduleIndex));
+  ref<MemoryAccessEntry> r(new MemoryAccessEntry(_thread, _vc, _lockset, _mo, _address, _length, _end, _location, _isWrite, _isAtomic, _scheduleIndex));
   return r;
 }
 
@@ -43,11 +43,14 @@ bool MemoryAccessEntry::overlap(const ExecutionState &state, TimingSolver &solve
   // Check if true: address+length >= other.address AND address <= other.address+other.length
   ref<Expr> overlapExpr = AndExpr::create(UgeExpr::create(end, other.address), UleExpr::create(address, other.end));
   bool result = false;
-  return (solver.mustBeTrue(state, overlapExpr, result) && result);
+  return (mo == other.mo) && (solver.mustBeTrue(state, overlapExpr, result) && result);
 }
 
 bool MemoryAccessEntry::isRace(const ExecutionState &state, TimingSolver &solver, const MemoryAccessEntry &other) const {
   if (thread == other.thread)
+    return false;
+
+  if (mo != other.mo)
     return false;
 
   if (!isWrite && !other.isWrite)
@@ -95,6 +98,11 @@ int MemoryAccessEntry::compare(const MemoryAccessEntry &other) const {
   if (thread < other.thread)
     return -1;
   else if (thread > other.thread)
+    return 1;
+
+  if (mo < other.mo)
+    return -1;
+  else if (mo > other.mo)
     return 1;
 
   if (address < other.address)

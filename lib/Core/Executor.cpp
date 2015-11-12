@@ -3975,7 +3975,7 @@ void Executor::logMemoryAccess(ExecutionState &state, ref<Expr> address, unsigne
 
   ref<MemoryAccessEntry> newEntry = MemoryAccessEntry::create(state.crtThread().getTid(),
                                                               state.crtThread().getVectorClock(),
-                                                              lockset,
+                                                              lockset, mo->id,
                                                               address, bytes, loc,
                                                               isWrite, isAtomic,
                                                               state.getSchedulingIndex());

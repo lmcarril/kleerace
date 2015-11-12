@@ -2,6 +2,7 @@
 #define MEMORYACCESSENTRY_H
 
 #include "Lockset.h"
+#include "Memory.h"
 #include "VectorClock.h"
 
 #include "klee/Expr.h"
@@ -26,6 +27,7 @@ private:
   thread_id_t thread;
   ref<VectorClock> vc;
   ref<Lockset> lockset;
+  MemoryObject::id_t mo;
   ref<Expr> address;
   unsigned length;
   ref<Expr> end;
@@ -35,12 +37,12 @@ private:
   std::vector<thread_id_t>::size_type scheduleIndex;
 
   MemoryAccessEntry(thread_id_t _thread, const ref<VectorClock> _vc,
-                    const ref<Lockset> _lockset, const ref<Expr> _address,
-                    unsigned _length, const ref<Expr> _end,
+                    const ref<Lockset> _lockset, MemoryObject::id_t _mo,
+                    const ref<Expr> _address, unsigned _length, const ref<Expr> _end,
                     const InstructionInfo *_location,
                     bool _isWrite, bool _isAtomic,
                     std::vector<thread_id_t>::size_type _scheduleIndex) :
-                    thread(_thread), vc(_vc), lockset(_lockset),
+                    thread(_thread), vc(_vc), lockset(_lockset), mo(_mo),
                     address(_address), length(_length), end(_end),
                     location(_location), isWrite(_isWrite), isAtomic(_isAtomic),
                     scheduleIndex(_scheduleIndex), refCount(0) {};
@@ -48,14 +50,15 @@ private:
 public:
   unsigned refCount;
   static ref<MemoryAccessEntry> create(thread_id_t _thread, const ref<VectorClock> _vc,
-                                       const ref<Lockset> _lockset, const ref<Expr> _address, unsigned _length,
+                                       const ref<Lockset> _lockset, MemoryObject::id_t _mo,
+                                       const ref<Expr> _address, unsigned _length,
                                        const InstructionInfo *_location,
                                        bool _isWrite, bool _isAtomic,
                                        std::vector<thread_id_t>::size_type _scheduleIndex);
 
   static ref<MemoryAccessEntry> alloc(thread_id_t _thread, const ref<VectorClock> _vc,
-                                      const ref<Lockset> _lockset, const ref<Expr> _address,
-                                      unsigned _length, const ref<Expr> _end,
+                                      const ref<Lockset> _lockset, MemoryObject::id_t _mo,
+                                      const ref<Expr> _address, unsigned _length, const ref<Expr> _end,
                                       const InstructionInfo *_location,
                                       bool _isWrite, bool _isAtomic,
                                       std::vector<thread_id_t>::size_type _scheduleIndex);
