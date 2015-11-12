@@ -3980,9 +3980,7 @@ void Executor::logMemoryAccess(ExecutionState &state, ref<Expr> address, unsigne
                                                               isWrite, isAtomic,
                                                               state.getSchedulingIndex());
 
-  //state.crtThread().getSegment().accesses[mo->id].push_back(newEntry);
-
-  state.memoryAccesses[mo->id].push_back(newEntry);
+  state.memoryAccesses.push_back(newEntry);
 
   if (raceCandidate) {
     state.raceCandidates[mo->id].push_back(newEntry);
