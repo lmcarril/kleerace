@@ -18,6 +18,7 @@ class ExecutionState;
 class TimingSolver;
 
 class MemoryAccessEntry {
+  friend class Executor;
   friend class RaceReport;
 
 private:

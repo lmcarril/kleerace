@@ -2828,6 +2828,9 @@ void Executor::terminateStateEarly(ExecutionState &state,
   if (DumpPtree)
     dumpPtree(&state);
 
+  if (Dpor)
+    dpor(state);
+
   terminateState(state);
 }
 
@@ -2847,6 +2850,9 @@ void Executor::terminateStateOnExit(ExecutionState &state) {
 
   if (DumpPtree)
     dumpPtree(&state);
+
+  if (Dpor)
+    dpor(state);
 
   terminateState(state);
 }
@@ -2941,6 +2947,9 @@ void Executor::terminateStateOnError(ExecutionState &state,
     
   if (DumpPtree)
     dumpPtree(&state);
+
+  if (Dpor)
+    dpor(state);
 
   terminateState(state);
 }
@@ -3724,6 +3733,9 @@ Expr::Width Executor::getWidthForLLVMType(LLVM_TYPE_Q llvm::Type *type) const {
 }
 
 bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread) {
+  if (Dpor)
+    dpor(state);
+
   state.closeTransition();
 
   if (state.enabledThreadIds().empty()) {
@@ -4051,6 +4063,88 @@ void Executor::dumpPtree(ExecutionState *state) {
     processTree->dump(*os);
     delete os;
   }
+}
+
+bool Executor::conflicts(std::vector<ref<MemoryAccessEntry> > next,
+               std::vector<ref<MemoryAccessEntry> > trans,
+               std::set<Thread::thread_id_t> &enabled,
+               ExecutionState &state) {
+  for (std::vector<ref<MemoryAccessEntry> >::const_iterator it = next.begin(),
+       ite = next.end(); it!=ite ; ++it) {
+    MemoryAccessEntry &ma = **it;
+    for (std::vector<ref<MemoryAccessEntry> >::const_iterator it2 = trans.begin(),
+         it2e = trans.end(); it2!=it2e ; ++it2) {
+      MemoryAccessEntry &ma2 = **it2;
+      // ID co-enabled in s
+      if (enabled.count(ma.thread) && enabled.count(ma2.thread)
+          // Are dependent
+          && (ma.isWrite || ma2.isWrite) && ma.overlap(state, *solver, ma2)
+          // Are unordered
+          && !ma2.vc->happensBefore(*ma.vc)) {
+        // Found dependent instruction
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void Executor::dpor(ExecutionState &state) {
+  PTreeNode *s = NULL;
+  // Ascend backwards until the first node SCHED
+  for (s = state.ptreeNode->parent; s != NULL; s = s->parent)
+    if (s->forkTag.forkType == KLEE_FORK_SCHEDULE)
+      break;
+
+  if (!s)
+    return;
+
+  Thread::thread_id_t crtTid = state.crtThread().getTid();
+  assert(s->done.count(crtTid));
+
+  std::set<Thread::thread_id_t> e;
+
+  // The next transition after s, really the last one
+  ExecutionState::transition_t const &next = state.memoryAccessesTransitions.back();
+  if (next.empty())
+    return;
+
+  PTreeNode *pre = s;
+  for (std::vector<ExecutionState::transition_t >::const_reverse_iterator itt = ++state.memoryAccessesTransitions.rbegin(),
+       itte = state.memoryAccessesTransitions.rend(); itt != itte ; ++itt) {
+    ExecutionState::transition_t const &i_trans = *itt;
+    for (pre = pre->parent; pre != NULL; pre = pre->parent)
+      if (pre->forkTag.forkType == KLEE_FORK_SCHEDULE)
+        break;
+    assert(pre);
+    Thread::thread_id_t transTid = pre->tid;
+    if (transTid == crtTid) // We have reached the actual thread again, end of backwards search
+      continue;
+
+    // Compare against 'next' transition for conlicts
+    assert(s->enabled.count(crtTid));
+    if (conflicts(next, i_trans, pre->enabled, state)) { //XXX Where they should be co-enabled?
+      // Simplified version, conservatively adds backtracking points
+      if (pre->enabled.count(crtTid))
+        backtrack(pre, crtTid);
+      else {
+        for (std::set<Thread::thread_id_t>::const_iterator itt = pre->enabled.begin(),
+             itte = pre->enabled.end(); itt != itte; ++itt)
+          backtrack(pre, *itt);
+      }
+
+      // Once found the backtring point for max 'i' we can stop the backwards search
+      break;
+    }
+  }
+}
+
+void Executor::backtrack(PTreeNode *node, Thread::thread_id_t tid) {
+  assert(node->enabled.count(tid));
+  if (node->done.count(tid))
+    return;
+  klee_message("Add backtracking point at node n0x%08lx for tid %lu", (long unsigned int)node, tid);
+  //TODO Clone and add ptree nodes
 }
 ///
 

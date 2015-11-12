@@ -428,6 +428,15 @@ private:
 
   void dumpPtree(ExecutionState *state);
 
+  bool conflicts(ExecutionState::transition_t next,
+                 ExecutionState::transition_t trans,
+                 std::set<Thread::thread_id_t> &enabled,
+                 ExecutionState &state);
+
+  void dpor(ExecutionState &state);
+
+  void backtrack(PTreeNode * node, Thread::thread_id_t tid);
+
 public:
   Executor(const InterpreterOptions &opts, InterpreterHandler *ie);
   virtual ~Executor();
