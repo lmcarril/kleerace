@@ -303,6 +303,12 @@ namespace {
   ConservePtreeNodes("conserve-ptree",
             cl::desc("Do not delete nodes from ptree graph, used for debugging (default=off)"),
             cl::init(false));
+
+  cl::opt<bool>
+  Dpor("dpor",
+            cl::desc("Enable stateful backtracking with dynamic partial order reduction (default=off)"),
+            cl::init(false));
+
 }
 
 
@@ -974,7 +980,7 @@ Executor::fork(ExecutionState &current, ref<Expr> condition, bool isInternal,
   }
 }
 
-Executor::StatePair Executor::fork(ExecutionState &current, ForkType reason, bool isFake) {
+Executor::StatePair Executor::fork(ExecutionState &current, ForkType reason, bool isFake, bool saveState) {
   ForkTag tag = getForkTag(current, reason);
   ExecutionState *lastState = &current;
 
@@ -986,8 +992,7 @@ Executor::StatePair Executor::fork(ExecutionState &current, ForkType reason, boo
   }
 
   if (lastState->ptreeNode) {
-    lastState->ptreeNode->data = 0;
-
+    lastState->ptreeNode->data = saveState? lastState->branch() : NULL;
 
     std::pair<PTree::Node*,PTree::Node*> res =
         processTree->split(lastState->ptreeNode, newState, lastState, tag);
@@ -3740,7 +3745,7 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       if (oldTid == nextTid) {
         state.ptreeNode->enabled = state.enabledThreadIds();
         state.ptreeNode->done.insert(oldIt->first);
-        fork(state, KLEE_FORK_SCHEDULE, true);
+        fork(state, KLEE_FORK_SCHEDULE, true, false);
         state.schedulingHistory.push_back(oldIt->first);
         state.scheduleNext(oldIt); // The current thread stays as current
         state.ptreeNode->tid = state.crtThread().getTid();
@@ -3760,7 +3765,7 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         }
         state.ptreeNode->enabled = state.enabledThreadIds();
         state.ptreeNode->done.insert(it->first);
-        fork(state, KLEE_FORK_SCHEDULE, true);
+        fork(state, KLEE_FORK_SCHEDULE, true, false);
         state.schedulingHistory.push_back(it->first);
         state.scheduleNext(it);
         state.ptreeNode->tid = state.crtThread().getTid();
@@ -3788,7 +3793,8 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       } else {
         state.ptreeNode->enabled = state.enabledThreadIds();
         state.ptreeNode->done.insert(it->first);
-        fork(state, KLEE_FORK_SCHEDULE, true);
+        bool save = Dpor && state.ptreeNode->enabled.size() > state.ptreeNode->done.size();
+        fork(state, KLEE_FORK_SCHEDULE, true, save);
         state.schedulingHistory.push_back(it->first);
         state.scheduleNext(it);
         state.ptreeNode->tid = state.crtThread().getTid();
@@ -3803,7 +3809,8 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       } else {
         state.ptreeNode->enabled = state.enabledThreadIds();
         state.ptreeNode->done.insert(oldIt->first);
-        fork(state, KLEE_FORK_SCHEDULE, true);
+        bool save = Dpor && state.ptreeNode->enabled.size() > state.ptreeNode->done.size();
+        fork(state, KLEE_FORK_SCHEDULE, true, save);
         state.schedulingHistory.push_back(oldIt->first);
         state.scheduleNext(oldIt); // The current thread stays as current
         state.ptreeNode->tid = state.crtThread().getTid();
@@ -3841,7 +3848,7 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         addFalseFork = false;
         lastState->ptreeNode->enabled = lastState->enabledThreadIds();
         lastState->ptreeNode->done = done;
-        StatePair sp = fork(*lastState, reason, false);
+        StatePair sp = fork(*lastState, reason, false, false);
 
         if (incPreemptions)
           sp.first->preemptions = state.preemptions + 1;
@@ -3878,7 +3885,8 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
     if (addFalseFork) {
       state.ptreeNode->enabled = state.enabledThreadIds();
       state.ptreeNode->done.insert(state.crtThread().getTid());
-      fork(state, KLEE_FORK_SCHEDULE, true);
+      bool save = Dpor && state.ptreeNode->enabled.size() > state.ptreeNode->done.size();
+      fork(state, KLEE_FORK_SCHEDULE, true, save);
       state.ptreeNode->tid = state.crtThread().getTid();
       state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
     }
@@ -3943,7 +3951,7 @@ void Executor::executeThreadNotifyOne(ExecutionState &state,
     Thread::thread_id_t tid = *it++;
 
     if (it != wl.end()) {
-      StatePair sp = fork(*lastState, reason, false);
+      StatePair sp = fork(*lastState, reason, false, false);
 
       sp.second->notifyOne(wlist, tid);
 

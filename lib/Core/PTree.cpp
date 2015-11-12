@@ -92,7 +92,9 @@ void PTree::dump(llvm::raw_ostream &os) {
       pp->print(n->condition);
       os << "\",shape=diamond";
     }
-    if (n->data)
+    if (n->data && n->forkTag.forkType == KLEE_FORK_SCHEDULE)
+      os << ",fillcolor=purple";
+    else if (n->data)
       os << ",fillcolor=green";
     os << "];\n";
     if (n->left) {
