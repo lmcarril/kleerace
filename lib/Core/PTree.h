@@ -50,7 +50,6 @@ namespace klee {
 
     // Thread at PNode instantiation step
     Thread::thread_id_t tid;
-    std::set<Thread::thread_id_t>::size_type schedulingIndex;
 
     // Thread enabled at end of PNode
     std::set<Thread::thread_id_t> enabled;

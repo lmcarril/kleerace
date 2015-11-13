@@ -72,7 +72,6 @@ void PTree::dump(llvm::raw_ostream &os) {
     os << "label=\"";
     os << "tid "<< n->tid << "\n";
     os << n->forkTag << "\n";
-    os << "sched " << n->schedulingIndex  << "\n";
 
     os << "\\[";
     for (std::set<Thread::thread_id_t>::iterator it = n->enabled.begin(), ite = n->enabled.end();
@@ -120,7 +119,6 @@ PTreeNode::PTreeNode(PTreeNode *_parent,
     forkTag(KLEE_FORK_DEFAULT) {
   if (data) {
     tid = data->crtThread().getTid();
-    schedulingIndex = data->getSchedulingIndex();
     enabled = data->enabledThreadIds();
     done.insert(tid);
   }

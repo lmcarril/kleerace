@@ -3763,7 +3763,6 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         state.schedulingHistory.push_back(oldIt->first);
         state.scheduleNext(oldIt); // The current thread stays as current
         state.ptreeNode->tid = state.crtThread().getTid();
-        state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
       } else {
         ExecutionState::threads_ty::iterator finalIt = state.crtThreadIt;
         ExecutionState::threads_ty::iterator it = state.nextThread(finalIt);
@@ -3783,7 +3782,6 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         state.schedulingHistory.push_back(it->first);
         state.scheduleNext(it);
         state.ptreeNode->tid = state.crtThread().getTid();
-        state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
       }
       replaySched++;
       scheduled = true;
@@ -3812,7 +3810,6 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         state.schedulingHistory.push_back(it->first);
         state.scheduleNext(it);
         state.ptreeNode->tid = state.crtThread().getTid();
-        state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
       }
     } else {
       if (NoMaxPreemptions || state.preemptions < MaxPreemptions) {
@@ -3828,7 +3825,6 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         state.schedulingHistory.push_back(oldIt->first);
         state.scheduleNext(oldIt); // The current thread stays as current
         state.ptreeNode->tid = state.crtThread().getTid();
-        state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
       }
     }
   }
@@ -3873,7 +3869,6 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         sp.first->scheduleNext(sp.first->threads.find(it->second.tid));
         sp.first->schedulingHistory.push_back(it->second.tid);
         sp.first->ptreeNode->tid = sp.first->crtThread().getTid();
-        sp.first->ptreeNode->schedulingIndex = sp.first->getSchedulingIndex();
 
         if (DebugSchedulingHistory) {
           unsigned int depth = sp.first->stack().size() - 1;
@@ -3902,7 +3897,6 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       bool save = Dpor && state.ptreeNode->enabled.size() > state.ptreeNode->done.size();
       fork(state, KLEE_FORK_SCHEDULE, true, save);
       state.ptreeNode->tid = state.crtThread().getTid();
-      state.ptreeNode->schedulingIndex = state.getSchedulingIndex();
     }
   }
   return true;
