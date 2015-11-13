@@ -234,7 +234,13 @@ public:
   typedef std::map<MemoryObject::id_t, std::vector<ref<MemoryAccessEntry> > > memory_access_register_t;
   memory_access_register_t raceCandidates;
 
-  std::vector<ref<MemoryAccessEntry> > memoryAccesses;
+  typedef std::vector<ref<MemoryAccessEntry> > transition_t;
+  std::vector<transition_t > memoryAccessesTransitions;
+
+  void closeTransition() {
+    transition_t newTransition;
+    memoryAccessesTransitions.push_back(newTransition);
+  }
 
   bool logMemAccesses;
 

@@ -3724,6 +3724,8 @@ Expr::Width Executor::getWidthForLLVMType(LLVM_TYPE_Q llvm::Type *type) const {
 }
 
 bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread) {
+  state.closeTransition();
+
   if (state.enabledThreadIds().empty()) {
     terminateStateOnError(state, " ******** hang (possible deadlock?)", "user.err");
     return false;
@@ -3997,7 +3999,7 @@ void Executor::logMemoryAccess(ExecutionState &state, ref<Expr> address, unsigne
                                                               isWrite, isAtomic,
                                                               state.getSchedulingIndex());
 
-  state.memoryAccesses.push_back(newEntry);
+  state.memoryAccessesTransitions.back().push_back(newEntry);
 
   if (raceCandidate) {
     state.raceCandidates[mo->id].push_back(newEntry);
