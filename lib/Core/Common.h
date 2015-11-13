@@ -52,8 +52,6 @@ namespace klee {
   void klee_warning_once(const void *id,
                          const char *msg, ...)
     __attribute__ ((format (printf, 2, 3)));
-
-  typedef uint64_t thread_id_t;
 }
 
 #endif /* __KLEE_COMMON_H__ */

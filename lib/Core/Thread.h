@@ -56,7 +56,6 @@
 #include "CallPathManager.h"
 #include "Lockset.h"
 #include "Memory.h"
-#include "MemoryAccessEntry.h"
 #include "VectorClock.h"
 
 #include <map>
@@ -96,7 +95,7 @@ class Thread {
 
 public:
   typedef std::vector<StackFrame> stack_ty;
-  typedef klee::thread_id_t thread_id_t;
+  typedef uint64_t thread_id_t;
   typedef uint64_t wlist_id_t;
 
 private:
