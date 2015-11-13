@@ -90,21 +90,6 @@ struct StackFrame {
   ~StackFrame();
 };
 
-struct ThreadSegment {
-  ref<VectorClock> vc;
-
-  ref<Lockset> lockset;
-  ref<Lockset> writeLockset;
-
-  typedef std::vector<ref<MemoryAccessEntry> >  accesses_t;
-  std::map<MemoryObject::id_t, accesses_t> accesses;
-
-  std::vector<klee::thread_id_t>::size_type scheduleIndex;
-
-  ThreadSegment(ref<VectorClock> vc, ref<Lockset> lockset, ref<Lockset> writeLockset,
-                std::vector<klee::thread_id_t>::size_type scheduleIndex);
-};
-
 class Thread {
   friend class Executor;
   friend class ExecutionState;
@@ -125,20 +110,19 @@ private:
 
   thread_id_t tid;
 
-  std::vector<ThreadSegment> segments;
+  ref<VectorClock> vc;
+
+  ref<Lockset> lockset;
+  ref<Lockset> writeLockset;
 
 public:
   Thread(thread_id_t tid, KFunction *start_function);
 
   thread_id_t getTid() const { return tid; }
 
-  void startSegment(ref<VectorClock> vc, ref<Lockset> lockset, ref<Lockset> writeLockset,
-                    std::vector<Thread::thread_id_t>::size_type scheduleIndex);
-  ThreadSegment& getSegment() { return segments.back(); }
-
-  ref<VectorClock> getVectorClock() const { return segments.back().vc; }
-  ref<Lockset> getLockset() const { return segments.back().lockset; }
-  ref<Lockset> getWriteLockset() const { return segments.back().writeLockset; }
+  ref<VectorClock> getVectorClock() const { return vc; }
+  ref<Lockset> getLockset() const { return lockset; }
+  ref<Lockset> getWriteLockset() const { return writeLockset; }
 };
 
 }

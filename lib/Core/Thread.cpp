@@ -70,10 +70,6 @@ StackFrame::~StackFrame() {
   delete[] locals;
 }
 
-ThreadSegment::ThreadSegment(ref<VectorClock> _vc, ref<Lockset> _lockset, ref<Lockset> _writeLockset,
-                             std::vector<Thread::thread_id_t>::size_type _scheduleIndex)
-  : vc(_vc), lockset(_lockset), writeLockset(_writeLockset), scheduleIndex(_scheduleIndex) {}
-
 /* Thread class methods */
 
 Thread::Thread(thread_id_t tid, KFunction * kf)
@@ -87,13 +83,7 @@ Thread::Thread(thread_id_t tid, KFunction * kf)
     prevPC = pc;
   }
 
-  startSegment(VectorClock::create(), Lockset::create(), Lockset::create(), 0);
-}
-
-void Thread::startSegment(ref<VectorClock> vc, ref<Lockset> lockset, ref<Lockset> writeLockset,
-                          std::vector<Thread::thread_id_t>::size_type scheduleIndex) {
-  // Remove previous segment if empty
-  if ((!segments.empty()) && (segments.back().accesses.empty()))
-    segments.pop_back();
-  segments.push_back(ThreadSegment(vc, lockset, writeLockset, scheduleIndex));
+  vc = VectorClock::create();
+  lockset = Lockset::create();
+  writeLockset = Lockset::create();
 }

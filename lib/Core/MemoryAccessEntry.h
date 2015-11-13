@@ -21,7 +21,7 @@ class MemoryAccessEntry {
 
 private:
   // TODO should be the same as Thread::thread_id_t
-  // But including Thread produces a dependecy cycle between MemoryAccessEntry, Thread and ThreadSegment
+  // But including Thread produces a dependecy cycle between MemoryAccessEntry, Thread
   // forward declaration does not help => incomplete type madness
   typedef klee::thread_id_t thread_id_t;
   thread_id_t thread;
