@@ -3856,8 +3856,10 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       // reschedule the same thread
       if (it->second.enabled && (!yield || it->second.tid != oldTid)) {
         addFalseFork = false;
-        lastState->ptreeNode->enabled = lastState->enabledThreadIds();
-        lastState->ptreeNode->done = done;
+        if (reason == KLEE_FORK_SCHEDULE) {
+          lastState->ptreeNode->enabled = lastState->enabledThreadIds();
+          lastState->ptreeNode->done = done;
+        }
         StatePair sp = fork(*lastState, reason, false, false);
 
         if (incPreemptions)

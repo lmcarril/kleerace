@@ -117,11 +117,8 @@ PTreeNode::PTreeNode(PTreeNode *_parent,
     data(_data),
     condition(0),
     forkTag(KLEE_FORK_DEFAULT) {
-  if (data) {
+  if (data)
     tid = data->crtThread().getTid();
-    enabled = data->enabledThreadIds();
-    done.insert(tid);
-  }
 }
 
 PTreeNode::~PTreeNode() {
