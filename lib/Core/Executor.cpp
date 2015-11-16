@@ -4137,10 +4137,83 @@ void Executor::dpor(ExecutionState &state) {
 
 void Executor::backtrack(PTreeNode *node, Thread::thread_id_t tid) {
   assert(node->enabled.count(tid));
+  assert(node->enabled.size() > 1);
   if (node->done.count(tid))
     return;
-  klee_message("Add backtracking point at node n0x%08lx for tid %lu", (long unsigned int)node, tid);
-  //TODO Clone and add ptree nodes
+  klee_message("Add backtracking point at node 0x%08lx for tid %lu", (long unsigned int)node, tid);
+  dumpPtree(node->data);
+  node->done.insert(tid);
+
+  // Create new State cloning the old one
+  ExecutionState *newState = NULL;
+  if (node->enabled == node->done) {
+    // If is the last possibility, reuse the stored state
+    newState = node->data;
+    node->data = NULL;
+  } else
+    newState = node->data->branch();
+  newState->schedulingHistory.push_back(tid);
+  newState->scheduleNext(newState->threads.find(tid));
+
+  // Find the empty branch to attach the new ptree nodes
+  PTreeNode *newParent = NULL;
+  PTreeNode ** branch = NULL;
+  if (!node->left) {
+    newParent = node;
+    branch = &(node->left);
+  } else if (!node->right) {
+    newParent = node;
+    branch = &(node->right);
+  } else {
+    std::vector<PTreeNode *> stack;
+    stack.push_back(node->left);
+    stack.push_back(node->right);
+    while (!stack.empty()) {
+      PTreeNode* t = stack.back();
+      stack.pop_back();
+      if (t->forkTag.forkType == KLEE_FORK_MULTI) {
+        if (!t->left) {
+          newParent = t;
+          branch = &t->left;
+          stack.clear();
+        } else if (!t->right) {
+          newParent = t;
+          branch = &t->right;
+          stack.clear();
+        } else {
+          stack.push_back(t->left);
+          stack.push_back(t->right);
+        }
+      }
+    }
+  }
+  assert(newParent && branch);
+
+  if (node->enabled.size() == 2) {
+    // Only two possibilities in schedule node, no helping nodes needed
+    assert(newParent == node);
+  } else {
+    // Insert new MULTI node
+    PTreeNode *newMulti = new PTreeNode(newParent, NULL);
+    newMulti->forkTag = getForkTag(*newState, KLEE_FORK_MULTI);
+    *branch = newMulti;
+    newMulti->tid = tid;
+    newMulti->right = NULL;
+
+    // Set new parent and branch to attach final ptree node
+    newParent = newMulti;
+    branch = &(newMulti->left);
+  }
+
+  // Insert new current PTreeNode
+  PTreeNode *newDefault = new PTreeNode(newParent, newState);
+  *branch = newDefault;
+  newDefault->tid = tid;
+
+  newState->ptreeNode = newDefault;
+
+  //Add state to new states
+  addedStates.insert(newState);
 }
 ///
 

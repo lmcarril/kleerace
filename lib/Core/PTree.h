@@ -41,6 +41,7 @@ namespace klee {
 
   class PTreeNode {
     friend class PTree;
+    friend class Executor;
   public:
     PTreeNode *parent, *left, *right;
     ExecutionState *data;
