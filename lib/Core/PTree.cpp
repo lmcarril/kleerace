@@ -70,19 +70,21 @@ void PTree::dump(llvm::raw_ostream &os) {
     stack.pop_back();
     os << "\tn" << n << " [";
     os << "label=\"";
-    os << "tid "<< n->tid << "\n";
-    os << n->forkTag << "\n";
+    //os << "tid "<< n->tid << "\n";
+    os << n->forkTag.forkType << "\n";
 
-    os << "\\[";
-    for (std::set<Thread::thread_id_t>::iterator it = n->enabled.begin(), ite = n->enabled.end();
-         it != ite; ) {
-      os << *it;
-      if (n->done.count(*it))
-        os << "*";
-      if (++it != ite)
-        os << ",";
+    if (n->forkTag.forkType == KLEE_FORK_SCHEDULE) {
+      os << "\\[";
+      for (std::set<Thread::thread_id_t>::iterator it = n->enabled.begin(), ite = n->enabled.end();
+           it != ite; ) {
+        os << *it;
+        if (n->done.count(*it))
+          os << "*";
+        if (++it != ite)
+          os << ",";
+      }
+      os << "\\]";
     }
-    os << "\\]";
 
     if (n->condition.isNull()) {
       os << "\"";
@@ -91,17 +93,40 @@ void PTree::dump(llvm::raw_ostream &os) {
       pp->print(n->condition);
       os << "\",shape=diamond";
     }
+
+    if (n->forkTag.forkType == KLEE_FORK_MULTI)
+      os << "style=dotted";
+
     if (n->data && n->forkTag.forkType == KLEE_FORK_SCHEDULE)
       os << ",fillcolor=purple";
     else if (n->data)
       os << ",fillcolor=green";
     os << "];\n";
+
     if (n->left) {
-      os << "\tn" << n << " -> n" << n->left << ";\n";
+      os << "\tn" << n << " -> n" << n->left;
+      if ((n->forkTag.forkType == KLEE_FORK_SCHEDULE
+           || n->forkTag.forkType == KLEE_FORK_MULTI)) {
+        os << "[";
+        if (n->left->forkTag.forkType != KLEE_FORK_MULTI)
+          os << "label=" << n->left->tid;
+        else
+          os << "style=dotted";
+        os << "];\n";
+      }
       stack.push_back(n->left);
     }
     if (n->right) {
-      os << "\tn" << n << " -> n" << n->right << ";\n";
+      os << "\tn" << n << " -> n" << n->right;
+      if ((n->forkTag.forkType == KLEE_FORK_SCHEDULE
+           || n->forkTag.forkType == KLEE_FORK_MULTI)) {
+        os << "[";
+        if (n->right->forkTag.forkType != KLEE_FORK_MULTI)
+          os << "label=" << n->right->tid;
+        else
+          os << "style=dotted";
+        os << "];\n";
+      }
       stack.push_back(n->right);
     }
   }
