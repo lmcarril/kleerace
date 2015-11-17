@@ -3759,6 +3759,7 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       if (oldTid == nextTid) {
         state.ptreeNode->enabled = state.enabledThreadIds();
         state.ptreeNode->done.insert(oldIt->first);
+        state.ptreeNode->vc = state.getVectorClocks();
         fork(state, KLEE_FORK_SCHEDULE, true, false);
         state.schedulingHistory.push_back(oldIt->first);
         state.scheduleNext(oldIt); // The current thread stays as current
@@ -3778,6 +3779,7 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         }
         state.ptreeNode->enabled = state.enabledThreadIds();
         state.ptreeNode->done.insert(it->first);
+        state.ptreeNode->vc = state.getVectorClocks();
         fork(state, KLEE_FORK_SCHEDULE, true, false);
         state.schedulingHistory.push_back(it->first);
         state.scheduleNext(it);
@@ -3805,6 +3807,7 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       } else {
         state.ptreeNode->enabled = state.enabledThreadIds();
         state.ptreeNode->done.insert(it->first);
+        state.ptreeNode->vc = state.getVectorClocks();
         bool save = Dpor && state.ptreeNode->enabled.size() > state.ptreeNode->done.size();
         fork(state, KLEE_FORK_SCHEDULE, true, save);
         state.schedulingHistory.push_back(it->first);
@@ -3820,6 +3823,7 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
       } else {
         state.ptreeNode->enabled = state.enabledThreadIds();
         state.ptreeNode->done.insert(oldIt->first);
+        state.ptreeNode->vc = state.getVectorClocks();
         bool save = Dpor && state.ptreeNode->enabled.size() > state.ptreeNode->done.size();
         fork(state, KLEE_FORK_SCHEDULE, true, save);
         state.schedulingHistory.push_back(oldIt->first);
@@ -3859,6 +3863,7 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         if (reason == KLEE_FORK_SCHEDULE) {
           lastState->ptreeNode->enabled = lastState->enabledThreadIds();
           lastState->ptreeNode->done = done;
+          lastState->ptreeNode->vc = lastState->getVectorClocks();
         }
         StatePair sp = fork(*lastState, reason, false, false);
 
@@ -3896,6 +3901,7 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
     if (addFalseFork) {
       state.ptreeNode->enabled = state.enabledThreadIds();
       state.ptreeNode->done.insert(state.crtThread().getTid());
+      state.ptreeNode->vc = state.getVectorClocks();
       bool save = Dpor && state.ptreeNode->enabled.size() > state.ptreeNode->done.size();
       fork(state, KLEE_FORK_SCHEDULE, true, save);
       state.ptreeNode->tid = state.crtThread().getTid();
@@ -4007,7 +4013,8 @@ void Executor::logMemoryAccess(ExecutionState &state, ref<Expr> address, unsigne
                                                               isWrite, isAtomic,
                                                               state.getSchedulingIndex());
 
-  state.memoryAccessesTransitions.back().push_back(newEntry);
+  if (Dpor)
+    state.currentAccesses.push_back(newEntry);
 
   if (raceCandidate) {
     state.raceCandidates[mo->id].push_back(newEntry);
@@ -4061,65 +4068,76 @@ void Executor::dumpPtree(ExecutionState *state) {
   }
 }
 
-bool Executor::conflicts(std::vector<ref<MemoryAccessEntry> > next,
-               std::vector<ref<MemoryAccessEntry> > trans,
-               std::set<Thread::thread_id_t> &enabled,
-               ExecutionState &state) {
+bool Executor::conflict(const std::vector<ref<MemoryAccessEntry> > &next,
+                        const std::vector<ref<MemoryAccessEntry> > &trans,
+                        const ExecutionState &state) {
+  // Check if transitions are dependent: accesses
   for (std::vector<ref<MemoryAccessEntry> >::const_iterator it = next.begin(),
        ite = next.end(); it!=ite ; ++it) {
     MemoryAccessEntry &ma = **it;
-    for (std::vector<ref<MemoryAccessEntry> >::const_iterator it2 = trans.begin(),
-         it2e = trans.end(); it2!=it2e ; ++it2) {
-      MemoryAccessEntry &ma2 = **it2;
-      // ID co-enabled in s
-      if (enabled.count(ma.thread) && enabled.count(ma2.thread)
-          // Are dependent
-          && (ma.isWrite || ma2.isWrite) && ma.overlap(state, *solver, ma2)
-          // Are unordered
-          && !ma2.vc->happensBefore(*ma.vc)) {
-        // Found dependent instruction
+    for (std::vector<ref<MemoryAccessEntry> >::const_iterator itpre = trans.begin(),
+         itpree = trans.end(); itpre!=itpree ; ++itpre) {
+      MemoryAccessEntry &mapre = **itpre;
+      if ((ma.isWrite || mapre.isWrite) && ma.overlap(state, *solver, mapre))
+        // XXX Constraints added after ma can modify the overlap between both accesses???
         return true;
-      }
     }
   }
   return false;
 }
 
 void Executor::dpor(ExecutionState &state) {
-  PTreeNode *s = NULL;
+  PTreeNode *s = state.ptreeNode;
   // Ascend backwards until the first node SCHED
-  for (s = state.ptreeNode->parent; s != NULL; s = s->parent)
+  for (; s != NULL; s = s->parent)
     if (s->forkTag.forkType == KLEE_FORK_SCHEDULE)
       break;
 
   if (!s)
     return;
 
+  // Retrieve
   Thread::thread_id_t crtTid = state.crtThread().getTid();
-  assert(s->done.count(crtTid));
+  assert(s->enabled.count(crtTid) && s->done.count(crtTid));
 
-  std::set<Thread::thread_id_t> e;
-
-  // The next transition after s, really the last one
-  ExecutionState::transition_t const &next = state.memoryAccessesTransitions.back();
+  const std::vector<ref<MemoryAccessEntry> > &next = state.currentAccesses;
   if (next.empty())
     return;
 
-  PTreeNode *pre = s;
-  for (std::vector<ExecutionState::transition_t >::const_reverse_iterator itt = ++state.memoryAccessesTransitions.rbegin(),
+  for (std::vector<Transition>::const_reverse_iterator itt = state.memoryAccessesTransitions.rbegin(),
        itte = state.memoryAccessesTransitions.rend(); itt != itte ; ++itt) {
-    ExecutionState::transition_t const &i_trans = *itt;
-    for (pre = pre->parent; pre != NULL; pre = pre->parent)
-      if (pre->forkTag.forkType == KLEE_FORK_SCHEDULE)
-        break;
+    const Transition &i_trans = *itt;
+    PTreeNode *pre = i_trans.schedNode;
+    Thread::thread_id_t transTid = i_trans.tid;
+    if (transTid == crtTid) // If a transition of the same thread is reached, stop search
+      break;
+
     assert(pre);
-    Thread::thread_id_t transTid = pre->tid;
-    if (transTid == crtTid) // We have reached the actual thread again, end of backwards search
+    if (!pre->data) // Ignore a transiton without state snapshot
       continue;
 
-    // Compare against 'next' transition for conlicts
-    assert(s->enabled.count(crtTid));
-    if (conflicts(next, i_trans, pre->enabled, state)) { //XXX Where they should be co-enabled?
+    assert(pre->enabled.count(transTid) && pre->done.count(transTid));
+    // Current thread was enabled at pre
+    if (!pre->enabled.count(crtTid))
+      continue;
+
+    // If 'next' disables the other thread then it is not co-enabled
+    if (s->enabled.count(transTid)
+        && !state.enabledThreadIds().count(transTid))
+      continue;
+
+    const Thread &preThread = pre->data->threads.find(transTid)->second;
+    std::vector<std::pair<Thread::thread_id_t, ref<VectorClock> > >::const_iterator itvc = pre->vc.begin(),
+                                                                                    itvce = pre->vc.end();
+    for (;itvc != itvce; ++itvc)
+      if (itvc->first == crtTid)
+        break;
+    // If transitions are ordered there is no conflict
+    if (preThread.getVectorClock()->happensBefore(*itvc->second))
+      continue;
+
+    // Finally, compare two sets of memory accesses to know if they conflict
+    if (conflict(next, i_trans.accesses, state)) {
       // Simplified version, conservatively adds backtracking points
       if (pre->enabled.count(crtTid))
         backtrack(pre, crtTid);
@@ -4141,7 +4159,6 @@ void Executor::backtrack(PTreeNode *node, Thread::thread_id_t tid) {
   if (node->done.count(tid))
     return;
   klee_message("Add backtracking point at node 0x%08lx for tid %lu", (long unsigned int)node, tid);
-  dumpPtree(node->data);
   node->done.insert(tid);
 
   // Create new State cloning the old one

@@ -19,6 +19,7 @@
 
 namespace klee {
   class ExecutionState;
+  class VectorClock;
 
   class PTree { 
     typedef ExecutionState* data_type;
@@ -55,6 +56,7 @@ namespace klee {
     // Thread enabled at end of PNode
     std::set<Thread::thread_id_t> enabled;
     std::set<Thread::thread_id_t> done;
+    std::vector<std::pair<Thread::thread_id_t, ref<VectorClock> > > vc;
   private:
     PTreeNode(PTreeNode *_parent, ExecutionState *_data);
     ~PTreeNode();

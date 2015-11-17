@@ -37,6 +37,16 @@ struct InstructionInfo;
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const MemoryMap &mm);
 
+struct Transition {
+  PTreeNode *schedNode;
+  std::vector<ref<MemoryAccessEntry> > accesses;
+  Thread::thread_id_t tid;
+
+  Transition(PTreeNode *_schedNode, std::vector<ref<MemoryAccessEntry> > _accesses,
+             Thread::thread_id_t _tid) : schedNode(_schedNode), accesses(_accesses),
+             tid(_tid) {}
+};
+
 /// @brief ExecutionState representing a path under exploration
 class ExecutionState {
 public:
@@ -198,6 +208,14 @@ public:
   // @brief Generate a new waiting list
   Thread::wlist_id_t getWaitingList() { return wlistCounter++; }
 
+  std::vector<std::pair<Thread::thread_id_t, ref<VectorClock> > >
+  getVectorClocks() {
+    std::vector<std::pair<Thread::thread_id_t, ref<VectorClock> > > res;
+    for (threads_ty::iterator it = threads.begin(), ite = threads.end();
+         it != ite ; ++it)
+      res.push_back(std::make_pair(it->second.tid, it->second.getVectorClock()));
+    return res;
+  }
 
   void sleepThread(Thread::wlist_id_t wlist);
   void notifyOne(Thread::wlist_id_t wlist, Thread::thread_id_t tid);
@@ -234,18 +252,15 @@ public:
   typedef std::map<MemoryObject::id_t, std::vector<ref<MemoryAccessEntry> > > memory_access_register_t;
   memory_access_register_t raceCandidates;
 
-  typedef std::vector<ref<MemoryAccessEntry> > transition_t;
-  std::vector<transition_t > memoryAccessesTransitions;
-
-  void closeTransition() {
-    transition_t newTransition;
-    memoryAccessesTransitions.push_back(newTransition);
-  }
+  std::vector<Transition> memoryAccessesTransitions;
+  std::vector<ref<MemoryAccessEntry> > currentAccesses;
 
   bool logMemAccesses;
 
   void updateVectorClock(Thread::thread_id_t tid, ref<VectorClock> vc);
   void updateLockset(Thread::thread_id_t tid, uint64_t lock_id, bool isAcquire, bool isWriteMode);
+
+  void closeTransition();
 };
 }
 #endif

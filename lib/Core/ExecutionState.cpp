@@ -18,6 +18,7 @@
 
 #include "Common.h"
 #include "Memory.h"
+#include "PTree.h"
 #if LLVM_VERSION_CODE >= LLVM_VERSION(3, 3)
 #include "llvm/IR/Function.h"
 #else
@@ -126,6 +127,7 @@ ExecutionState::ExecutionState(const ExecutionState& state):
 
     raceCandidates(state.raceCandidates),
     memoryAccessesTransitions(state.memoryAccessesTransitions),
+    currentAccesses(state.currentAccesses),
     logMemAccesses(state.logMemAccesses)
 {
   for (unsigned int i=0; i<symbolics.size(); i++)
@@ -483,4 +485,16 @@ void ExecutionState::updateLockset(Thread::thread_id_t tid, uint64_t lock_id,
       t.writeLockset = t.getWriteLockset()->erase(lock_id);
     }
   }
+}
+
+void ExecutionState::closeTransition() {
+  PTreeNode *pre = ptreeNode;
+  for (; pre != NULL; pre = pre->parent)
+    if (pre->forkTag.forkType == KLEE_FORK_SCHEDULE)
+      break;
+
+  if (pre)
+    memoryAccessesTransitions.push_back(Transition(pre, currentAccesses, crtThread().getTid()));
+
+  currentAccesses.clear();
 }

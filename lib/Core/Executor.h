@@ -428,10 +428,9 @@ private:
 
   void dumpPtree(ExecutionState *state);
 
-  bool conflicts(ExecutionState::transition_t next,
-                 ExecutionState::transition_t trans,
-                 std::set<Thread::thread_id_t> &enabled,
-                 ExecutionState &state);
+  bool conflict(const std::vector<ref<MemoryAccessEntry> > &next,
+                const std::vector<ref<MemoryAccessEntry> > &trans,
+                const ExecutionState &state);
 
   void dpor(ExecutionState &state);
 
