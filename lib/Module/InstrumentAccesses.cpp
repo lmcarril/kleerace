@@ -29,17 +29,17 @@ using namespace llvm;
 using namespace klee;
 
 static cl::opt<bool>
-ClInstrumentMemoryAccesses("instrument-memory-accesses (default=on)",
+ClInstrumentMemoryAccesses("instrument-memory-accesses (default=off)",
                            cl::desc("Instrument memory accesses"),
-                           cl::init(true));
+                           cl::init(false));
 static cl::opt<bool>
-ClInstrumentAtomics("instrument-atomics (default=on)",
+ClInstrumentAtomics("instrument-atomics (default=off)",
                     cl::desc("Instrument atomics"),
-                    cl::init(true));
+                    cl::init(false));
 static cl::opt<bool>
-ClInstrumentMemIntrinsics("instrument-memory-function (default=on)",
+ClInstrumentMemIntrinsics("instrument-memory-function (default=off)",
                           cl::desc("Instrument memory functions (memset/memcpy/memmove)"),
-                          cl::init(true));
+                          cl::init(false));
 
 char InstrumentAccesses::ID = 0;
 
