@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <semaphore.h>
  
-#define ITERATIONS 10000
+#define ITERATIONS 100
 sem_t sem_writer;
 sem_t sem_reader;
  

@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <pthread.h>
  
-#define ITERATIONS 10000
+#define ITERATIONS 100
 pthread_mutex_t mutex;
 int sharedData=0;
  
