@@ -149,8 +149,8 @@ namespace {
     
   cl::opt<bool>
   WithPOSIXRuntime("posix-runtime", 
-		cl::desc("Link with POSIX runtime.  Options that can be passed as arguments to the programs are: --sym-argv <max-len>  --sym-argvs <min-argvs> <max-argvs> <max-len> + file model options (default=on)"),
-		cl::init(true));
+		cl::desc("Link with POSIX runtime.  Options that can be passed as arguments to the programs are: --sym-argv <max-len>  --sym-argvs <min-argvs> <max-argvs> <max-len> + file model options (default=off)"),
+		cl::init(false));
     
   cl::opt<bool>
   OptimizeModule("optimize", 
