@@ -214,11 +214,6 @@ namespace {
   Watchdog("watchdog",
            cl::desc("Use a watchdog process to enforce --max-time."),
            cl::init(0));
-
-  cl::opt<bool>
-  DisableInstrumentAccesses("disable-instrument-accesses",
-                            cl::desc("Disable static instrumentation of memory accesses."),
-                            cl::init(false));
 }
 
 extern cl::opt<double> MaxTime;
@@ -1292,7 +1287,7 @@ int main(int argc, char **argv, char **envp) {
   }
 #endif
 
-  if (!DisableInstrumentAccesses) {
+  {
     PassManager pm;
     const llvm::DataLayout &DL = DataLayout(mainModule);
     pm.add(new InstrumentAccesses(DL));

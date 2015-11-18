@@ -29,17 +29,21 @@ using namespace llvm;
 using namespace klee;
 
 static cl::opt<bool>
-ClInstrumentMemoryAccesses("instrument-memory-accesses (default=off)",
+ClInstrumentMemoryAccesses("instrument-memory-accesses",
                            cl::desc("Instrument memory accesses"),
                            cl::init(false));
 static cl::opt<bool>
-ClInstrumentAtomics("instrument-atomics (default=off)",
+ClInstrumentAtomics("instrument-atomics",
                     cl::desc("Instrument atomics"),
                     cl::init(false));
 static cl::opt<bool>
-ClInstrumentMemIntrinsics("instrument-memory-function (default=off)",
+ClInstrumentMemIntrinsics("instrument-memory-function",
                           cl::desc("Instrument memory functions (memset/memcpy/memmove)"),
                           cl::init(false));
+static cl::opt<bool>
+ClInstrumentAll("instrument-all",
+                cl::desc("Enable the options: instrument-atomics, instrument-memory-function and instrument-memory-accesses"),
+                cl::init(false));
 
 char InstrumentAccesses::ID = 0;
 
@@ -59,6 +63,12 @@ bool InstrumentAccesses::doInitialization(Module &M) {
                                                         IRB.getVoidTy(), IRB.getInt8PtrTy(),
                                                         IntptrTy, IRB.getInt8Ty(),
                                                         IRB.getInt8Ty(), IRB.getInt8Ty(), NULL));
+
+  if (ClInstrumentAll) {
+    ClInstrumentMemoryAccesses = true;
+    ClInstrumentAtomics = true;
+    ClInstrumentMemIntrinsics = true;
+  }
   return true;
 }
 
