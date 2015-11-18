@@ -1,5 +1,5 @@
 // RUN: %llvmgcc %s -emit-llvm -O0 -c -o %t1.bc
-// RUN: %klee --no-output --exit-on-error --posix-runtime --libc=uclibc %t1.bc --sym-arg 1 --sym-arg 1
+// RUN: %klee --no-output --exit-on-error --posix-runtime --libc=uclibc --preempt-after-pthread-success %t1.bc --sym-arg 1 --sym-arg 1
 
 #include <assert.h>
 #include <pthread.h>

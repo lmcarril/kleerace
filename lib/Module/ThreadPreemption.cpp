@@ -32,8 +32,8 @@ ClPreemptBefore("preempt-before-pthread",
 
 static cl::opt<bool>
 ClPreemptAfterIfSuccess("preempt-after-pthread-success",
-        cl::desc("Add preemption points after pthread calls, if the call is succesful (default=on)"),
-        cl::init(true));
+        cl::desc("Add preemption points after pthread calls, if the call is succesful (default=off)"),
+        cl::init(false));
 
 char ThreadPreemptionPass::ID = 0;
 

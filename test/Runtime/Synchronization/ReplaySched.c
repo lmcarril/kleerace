@@ -1,7 +1,7 @@
 // RUN: %llvmgcc %s -emit-llvm -O0 -c -o %t1.bc
 // RUN: rm -rf %t1.out
-// RUN: %klee --output-dir=%t1.out --exit-on-error --posix-runtime --libc=uclibc %t1.bc --sym-arg 1 --sym-arg 1
-// RUN: %klee --no-output --posix-runtime --libc=uclibc --replay-out=%t1.out/test000001.ktest %t1.bc
+// RUN: %klee --output-dir=%t1.out --exit-on-error --posix-runtime --libc=uclibc %t1.bc --preempt-after-pthread-success --sym-arg 1 --sym-arg 1
+// RUN: %klee --no-output --posix-runtime --libc=uclibc --preempt-after-pthread-success --replay-out=%t1.out/test000001.ktest %t1.bc
 
 #include <assert.h>
 #include <pthread.h>
