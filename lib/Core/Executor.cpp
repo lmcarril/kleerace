@@ -4107,8 +4107,8 @@ void Executor::dpor(ExecutionState &state) {
     const Transition &i_trans = *itt;
     PTreeNode *pre = i_trans.schedNode;
     Thread::thread_id_t transTid = i_trans.tid;
-    if (transTid == crtTid) // If a transition of the same thread is reached, stop search
-      break;
+    if (transTid == crtTid) // If a transition of the same thread is reached ignore it
+      continue;
 
     assert(pre);
     if (!pre->data) // Ignore a transiton without state snapshot
