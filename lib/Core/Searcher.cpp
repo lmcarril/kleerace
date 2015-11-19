@@ -260,7 +260,7 @@ ExecutionState &RandomPathSearcher::selectState() {
   unsigned flips=0, bits=0;
   PTree::Node *n = executor.processTree->root;
   
-  while (!n->data) {
+  while (!n->data || n->forkTag.forkType != KLEE_FORK_DEFAULT) {
     if (!n->left) {
       n = n->right;
     } else if (!n->right) {
