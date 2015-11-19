@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+
+import re
+import subprocess
+import sys
+
+defaults = ["-posix-runtime",
+            "-preempt-after-pthread-success",
+            "-instrument-all"]
+
+def main(args):
+    klee_args = args[1:]
+
+    arg_str = ' '.join(klee_args)
+    for d in defaults:
+        if not re.search(d, arg_str):
+            klee_args = [d] + klee_args
+
+    klee_args = ["klee"] + klee_args
+    subprocess.call(klee_args)
+
+if __name__=='__main__':
+    main(sys.argv)
