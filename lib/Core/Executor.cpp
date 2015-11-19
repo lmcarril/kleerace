@@ -2516,10 +2516,9 @@ void Executor::updateStates(ExecutionState *current) {
       seedMap.find(es);
     if (it3 != seedMap.end())
       seedMap.erase(it3);
+    es->ptreeNode->data = NULL;
     if (!ConservePtreeNodes)
       processTree->remove(es->ptreeNode);
-    else
-      es->ptreeNode->data = NULL;
     delete es;
   }
   removedStates.clear();
@@ -2801,10 +2800,9 @@ void Executor::terminateState(ExecutionState &state) {
     if (it3 != seedMap.end())
       seedMap.erase(it3);
     addedStates.erase(it);
+    state.ptreeNode->data = NULL;
     if (!ConservePtreeNodes)
       processTree->remove(state.ptreeNode);
-    else
-      state.ptreeNode->data = NULL;
     delete &state;
   }
 }
