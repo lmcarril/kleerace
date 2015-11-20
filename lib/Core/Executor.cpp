@@ -3807,6 +3807,8 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         state.ptreeNode->done.insert(it->first);
         state.ptreeNode->vc = state.getVectorClocks();
         bool save = Dpor && state.ptreeNode->enabled.size() > state.ptreeNode->done.size();
+        if (save && terminateThread)
+          state.ptreeNode->terminateThread = true;
         fork(state, KLEE_FORK_SCHEDULE, true, save);
         state.schedulingHistory.push_back(it->first);
         state.scheduleNext(it);
@@ -3823,6 +3825,8 @@ bool Executor::schedule(ExecutionState &state, bool yield, bool terminateThread)
         state.ptreeNode->done.insert(oldIt->first);
         state.ptreeNode->vc = state.getVectorClocks();
         bool save = Dpor && state.ptreeNode->enabled.size() > state.ptreeNode->done.size();
+        if (save && terminateThread)
+          state.ptreeNode->parent->terminateThread = true;
         fork(state, KLEE_FORK_SCHEDULE, true, save);
         state.schedulingHistory.push_back(oldIt->first);
         state.scheduleNext(oldIt); // The current thread stays as current
@@ -4168,7 +4172,10 @@ void Executor::backtrack(PTreeNode *node, Thread::thread_id_t tid) {
   } else
     newState = node->data->branch();
   newState->schedulingHistory.push_back(tid);
+  ExecutionState::threads_ty::iterator oldIt = newState->crtThreadIt;
   newState->scheduleNext(newState->threads.find(tid));
+  if (node->terminateThread)
+    newState->terminateThread(oldIt);
 
   // Find the empty branch to attach the new ptree nodes
   PTreeNode *newParent = NULL;

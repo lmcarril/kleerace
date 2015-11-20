@@ -57,6 +57,7 @@ namespace klee {
     std::set<Thread::thread_id_t> enabled;
     std::set<Thread::thread_id_t> done;
     std::vector<std::pair<Thread::thread_id_t, ref<VectorClock> > > vc;
+    bool terminateThread; // Use when cloning state to know that current thread must be terminated
   private:
     PTreeNode(PTreeNode *_parent, ExecutionState *_data);
     ~PTreeNode();
