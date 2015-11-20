@@ -70,7 +70,7 @@ void PTree::dump(llvm::raw_ostream &os) {
     stack.pop_back();
     os << "\tn" << n << " [";
     os << "label=\"";
-    //os << "tid "<< n->tid << "\n";
+    os << "n" << n << "\n";
     os << n->forkTag.forkType << "\n";
 
     if (n->forkTag.forkType == KLEE_FORK_SCHEDULE) {
