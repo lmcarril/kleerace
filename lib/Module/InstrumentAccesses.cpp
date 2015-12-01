@@ -118,6 +118,7 @@ void InstrumentAccesses::chooseInstructionsToInstrument(
     } else {
       LoadInst *Load = cast<LoadInst>(I);
       Value *Addr = Load->getPointerOperand();
+      if (WriteTargets.count(Addr))
         // We will write to this temp, so no reason to analyze the read.
         continue;
       if (addrPointsToConstantData(Addr))
